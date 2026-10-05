@@ -1,0 +1,11 @@
+node_modules/
+.vercel/
+dist/
+.env
+.env.*
+screenshots/
+artifacts/
+.Time Material/
+attachments/
+*.log
+.node_modules.lock
