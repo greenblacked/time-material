@@ -223,23 +223,33 @@ export function meetingBrief(
       ? "Everyone is inside work hours for the whole meeting."
       : "Not everyone is inside work hours for the whole meeting.",
   ];
+  if (schedule?.status === "ok") lines.push(`Calendar scope: ${schedule.message}`);
   if (!schedule || schedule.status !== "ok") {
     lines.push("Calendar was not applied.");
-  } else if (view.busyHits.length === 0 && view.eventHits.length === 0) {
+  } else if (
+    view.busyHits.length === 0 &&
+    view.eventHits.length === 0 &&
+    schedule.busyComplete === true &&
+    schedule.eventsComplete === true
+  ) {
     lines.push("Nothing on the calendar overlaps this cut.");
   } else {
     const names = view.eventHits.map((event) => event.title);
     lines.push(
       names.length
         ? `Calendar overlaps: ${names.join(", ")}.`
-        : "The calendar is busy in this cut.",
+        : view.busyHits.length
+          ? "The calendar is busy in this cut."
+          : "Calendar coverage is incomplete; availability is unknown.",
     );
   }
   if (schedule?.status === "ok") {
     lines.push(
       view.zoomHits.length
         ? `Zoom already in this cut: ${view.zoomHits.map((event) => event.title).join(", ")}.`
-        : "No Zoom call in this cut.",
+        : schedule.eventsComplete === true
+          ? "No Zoom call in this cut."
+          : "Zoom coverage is incomplete; other calls may be missing.",
     );
   }
   return lines.join("\n");

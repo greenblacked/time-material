@@ -476,7 +476,10 @@ export function Loom({
               </div>
               <Ribbon
                 empty={
-                  unread ?? (schedule?.status === "ok" ? "Nothing scheduled in view." : "No data")
+                  unread ??
+                  (schedule?.busyComplete === true && schedule.eventsComplete === true
+                    ? "Nothing scheduled in view."
+                    : "Calendar coverage incomplete.")
                 }
                 showEmpty={
                   unread !== null ||
@@ -529,7 +532,12 @@ export function Loom({
                   })}
               </Ribbon>
               <Ribbon
-                empty={unread ?? "No Zoom calls in view."}
+                empty={
+                  unread ??
+                  (schedule?.eventsComplete === true
+                    ? "No Zoom calls in view."
+                    : "Zoom coverage incomplete.")
+                }
                 showEmpty={unread !== null || view.zoomInView.length === 0}
                 last
               >

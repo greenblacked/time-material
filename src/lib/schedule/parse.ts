@@ -71,7 +71,23 @@ function readEvent(value: unknown): ScheduleEvent | null {
   if (!hasIdentity) return null;
   const start = readEventTime(record.start);
   const end = readEventTime(record.end);
-  if (!start || !end) return null;
+  if (
+    !start ||
+    !end ||
+    !Number.isFinite(Date.parse(start.iso)) ||
+    !Number.isFinite(Date.parse(end.iso)) ||
+    Date.parse(end.iso) <= Date.parse(start.iso)
+  )
+    return null;
+  if (start.allDay !== end.allDay) return null;
+  for (const time of [start, end]) {
+    if (
+      time.allDay &&
+      (!/^\d{4}-\d{2}-\d{2}$/.test(time.iso) ||
+        new Date(time.iso).toISOString().slice(0, 10) !== time.iso)
+    )
+      return null;
+  }
   const rawTitle =
     (typeof record.summary === "string" && record.summary) ||
     (typeof record.title === "string" && record.title) ||
@@ -82,10 +98,7 @@ function readEvent(value: unknown): ScheduleEvent | null {
   const isZoom = Boolean(zoomUrl) || conferenceIsZoom(record);
   const status = typeof record.status === "string" ? record.status : "";
   const transparent = record.transparency === "transparent" || status === "cancelled";
-  const id =
-    typeof record.id === "string" && record.id
-      ? record.id
-      : `${start.iso}:${title}`;
+  const id = typeof record.id === "string" && record.id ? record.id : `${start.iso}:${title}`;
   return {
     id,
     title,
@@ -126,7 +139,6 @@ export function collectEvents(data: unknown): ScheduleEvent[] {
     if (seen.has(key)) continue;
     seen.add(key);
     unique.push(event);
-    if (unique.length >= 80) break;
   }
   return unique;
 }
@@ -162,7 +174,7 @@ export function collectBusy(data: unknown): BusySpan[] {
     }
   };
   visit(data, 0);
-  return out.slice(0, 200);
+  return out;
 }
 
 export function zoomLabel(url: string): string {
@@ -175,4 +187,83 @@ export function zoomLabel(url: string): string {
   }
   const match = url.match(/\/j\/(\d+)/);
   return match ? `Zoom ${match[1]}` : "Open Zoom";
+}
+
+// Search has no documented continuation request contract. Preserve returned data,
+// but do not infer absence from a capped, malformed or partial provider response.
+function partialResponse(record: Record<string, unknown>): boolean {
+  return Object.entries(record).some(
+    ([key, value]) =>
+      (/^(nextPageToken|next_page_token|nextCursor|next_cursor|hasMore|has_more)$/i.test(key) &&
+        Boolean(value)) ||
+      ((key === "error" || key === "errors") &&
+        Boolean(value) &&
+        (!Array.isArray(value) || value.length > 0)),
+  );
+}
+
+export function eventResponseComplete(data: unknown): boolean {
+  let complete = true;
+  let found = false;
+  const entries = (items: unknown[]) => {
+    found = true;
+    if (items.length >= 40) complete = false;
+    for (const item of items) {
+      const record = asRecord(item);
+      // Cancelled tombstones intentionally carry no usable timing information.
+      if (record?.status === "cancelled") continue;
+      if (!readEvent(item)) complete = false;
+    }
+  };
+  const visit = (node: unknown, depth: number) => {
+    if (depth > 7) {
+      complete = false;
+      return;
+    }
+    if (Array.isArray(node)) {
+      entries(node);
+      return;
+    }
+    const record = asRecord(node);
+    if (!record) {
+      complete = false;
+      return;
+    }
+    if (partialResponse(record)) complete = false;
+    for (const key of ["items", "events", "data", "result"]) {
+      if (key in record) visit(record[key], depth + 1);
+    }
+  };
+  visit(data, 0);
+  return complete && found;
+}
+
+export function busyResponseComplete(data: unknown): boolean {
+  let found = false;
+  let complete = true;
+  const visit = (node: unknown, depth: number) => {
+    if (depth > 8) {
+      complete = false;
+      return;
+    }
+    if (!node || typeof node !== "object") return;
+    if (Array.isArray(node)) {
+      node.forEach((item) => visit(item, depth + 1));
+      return;
+    }
+    const record = node as Record<string, unknown>;
+    if (partialResponse(record)) complete = false;
+    if ("busy" in record) {
+      if (!Array.isArray(record.busy)) complete = false;
+      else {
+        found = true;
+        if (record.busy.some((item) => !readBusy(item))) complete = false;
+      }
+    }
+    for (const [key, value] of Object.entries(record)) {
+      if (key !== "busy" && value && typeof value === "object") visit(value, depth + 1);
+    }
+  };
+  visit(data, 0);
+  return found && complete;
 }

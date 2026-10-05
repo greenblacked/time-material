@@ -4,7 +4,18 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 const gate = fileURLToPath(new URL("./gate.mjs", import.meta.url));
-const jobs = ["LINT", "TYPECHECK", "TEST", "BUILD", "COMMITS", "WORKFLOWS", "BRANCH"];
+const jobs = [
+  "LINT",
+  "TYPECHECK",
+  "TEST",
+  "BUILD",
+  "WORKER",
+  "BROWSER",
+  "SECURITY",
+  "COMMITS",
+  "WORKFLOWS",
+  "BRANCH",
+];
 const passing = Object.fromEntries(jobs.map((job) => [job, "success"]));
 function run(overrides = {}) {
   const env = { ...passing, EVENT_NAME: "pull_request", ...overrides };
@@ -14,10 +25,10 @@ function run(overrides = {}) {
   return spawnSync(process.execPath, [gate], { env, encoding: "utf8" });
 }
 
-test("all required jobs passing produces CI OK", () => {
+test("all required jobs passing produces CI", () => {
   const result = run();
   assert.equal(result.status, 0);
-  assert.match(result.stdout, /CI OK/);
+  assert.match(result.stdout, /^CI\s*$/);
 });
 
 for (const job of jobs) {

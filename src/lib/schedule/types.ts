@@ -20,6 +20,8 @@ export type ScheduleResponse = {
   status: ScheduleStatus;
   message: string;
   loginUrl?: string;
+  busyComplete?: boolean;
+  eventsComplete?: boolean;
   busy: BusySpan[];
   events: ScheduleEvent[];
 };

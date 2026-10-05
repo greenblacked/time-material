@@ -14,12 +14,15 @@ work ──▶ dev ── pull request (merge commit) ──▶ stage ── pul
 
 ## Commits
 
-- Author `greenblacked <23718180+greenblacked@users.noreply.github.com>`.
-- Conventional Commits: `<type>(<scope>): <imperative summary>`.
-- The subject is at most 72 characters.
-- Types: `feat`, `fix`, `docs`, `ci`, `chore`, `refactor`, `test`, `perf`, `build`, `release`.
-- A release uses `release`, never `chore`. The pull request title is `release: vX.Y.Z`.
-- Merge commits are allowed. Everything else must match the subject rule.
+- Use your own configured Git identity; a verified or GitHub privacy email is recommended.
+- Follow Conventional Commits: `<type>(<scope>): <imperative summary>`. The scope is optional.
+- Keep the subject within 72 characters and describe the concrete change.
+- Use `feat`, `fix`, `docs`, `ci`, `chore`, `refactor`, `test`, `perf`, `build` or `release`.
+- Explain the reason and relevant validation in the body when the subject is insufficient.
+- Keep commits focused and exclude generated artifacts, credentials and local tooling state.
+- Use `release` for version preparation. Release pull requests use `release: vX.Y.Z`.
+- Only the repository owner reviews and merges pull requests. Use merge commits for branch promotion;
+  other commits must follow the subject convention.
 
 ## Branches
 
@@ -47,8 +50,8 @@ If that fails, merge `stage` into `dev`, re-check, then push.
 
 Into `stage` and into `main`, every time:
 
-- [ ] Serhii's explicit go-ahead.
-- [ ] `CI OK` is green on the pull request head, and the latest push to the target branch is green. Nothing red, pending, or queued.
+- [ ] The repository owner's review, explicit approval and merge.
+- [ ] `CI` is green on the pull request head, and the latest push to the target branch is green. Nothing red, pending, or queued.
 - [ ] Every review thread is resolved.
 - [ ] One merge at a time. Wait for the target branch's checks after each merge.
 

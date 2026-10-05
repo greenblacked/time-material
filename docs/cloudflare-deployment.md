@@ -95,8 +95,9 @@ wrangler deploy --dry-run --no-autoconfig --no-install-skills --config dist/serv
 
 The production and dry-run commands disable automatic project configuration and
 skill installation; preview also disables skill installation. Stage is a preview
-of the same `time-material` Worker and never takes production traffic. No Worker
-has been published by this change.
+of the same `time-material` Worker and never takes production traffic. Both
+hostnames were published and checked on 2026-10-05. Later changes on `dev` are
+local until explicitly published or promoted through the deployment workflow.
 The workflow verifies the uploaded Worker version through `X-Worker-Version`,
 then checks its SSR/JavaScript/manifest with request timeouts. A failed smoke
 triggers rollback only if the currently answering version is still that failed

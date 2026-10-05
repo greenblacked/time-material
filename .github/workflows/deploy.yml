@@ -2,17 +2,21 @@ name: Deploy Cloudflare
 
 on:
   push:
-    branches: [main, stage]
-  pull_request:
-    branches: [dev, stage, main]
-  workflow_dispatch:
+    branches: [stage]
+  workflow_call:
+    secrets:
+      CLOUDFLARE_API_TOKEN:
+        required: true
+      CLOUDFLARE_ACCOUNT_ID:
+        required: true
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
-  group: cloudflare-${{ github.event.pull_request.number || github.ref_name }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: cloudflare-${{ github.ref_type == 'tag' && 'production' || 'staging' }}
+  cancel-in-progress: false
 
 env:
   WRANGLER_SEND_METRICS: "false"
@@ -21,7 +25,7 @@ jobs:
   build:
     name: build and verify Worker
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     outputs:
       environment: ${{ steps.target.outputs.environment }}
     steps:
@@ -32,22 +36,24 @@ jobs:
           REF_TYPE: ${{ github.ref_type }}
           REF_NAME: ${{ github.ref_name }}
         run: |
-          if [ "$EVENT" = pull_request ]; then
-            echo "environment=none" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          [ "$REF_TYPE" = branch ] || exit 1
-          case "$REF_NAME" in
-            main) echo "environment=production" >> "$GITHUB_OUTPUT" ;;
-            stage) echo "environment=staging" >> "$GITHUB_OUTPUT" ;;
-            *) echo 'Only main and stage can deploy'; exit 1 ;;
+          case "$EVENT:$REF_TYPE:$REF_NAME" in
+            push:branch:stage) echo "environment=staging" >> "$GITHUB_OUTPUT" ;;
+            push:tag:v*|workflow_dispatch:tag:v*) echo "environment=production" >> "$GITHUB_OUTPUT" ;;
+            *) echo 'Unauthorized deployment context'; exit 1 ;;
           esac
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           persist-credentials: false
+          fetch-depth: 0
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: 22
+      - name: Require exact commit CI before building
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TARGET: ${{ steps.target.outputs.environment }}
+        run: |
+          if [ "$TARGET" = production ]; then node scripts/release/guard.mjs release; else node scripts/release/guard.mjs stage; fi
       - run: npm ci
       - run: npm run lint
       - run: npm run typecheck
@@ -55,46 +61,7 @@ jobs:
       - run: npm run build:cloudflare
       - run: npm run deploy:cloudflare:dry-run
       - name: Smoke-test workerd and noindex preview bindings without credentials
-        run: |
-          preview_pid=''
-          trap 'if [ -n "$preview_pid" ]; then kill -- -"$preview_pid" 2>/dev/null || true; fi' EXIT
-          for mode in index noindex; do
-            setsid npx --no-install wrangler dev --config dist/server/wrangler.json --local --port 8081 --var "ROBOTS:$mode" > "$RUNNER_TEMP/worker-$mode.log" 2>&1 &
-            preview_pid=$!
-            MODE="$mode" node --input-type=module <<'JS'
-          import assert from 'node:assert/strict';
-          const base = 'http://127.0.0.1:8081';
-          const get = (path, timeout = 10000, options = {}) => fetch(base + path, { ...options, signal: AbortSignal.timeout(timeout) });
-          const deadline = Date.now() + 60000;
-          let response;
-          while (Date.now() < deadline) {
-            try { response = await get('/', 3000); if (response.ok) break; } catch {}
-            await new Promise((resolve) => setTimeout(resolve, 500));
-          }
-          assert.ok(response?.ok, 'Worker SSR must respond');
-          assert.ok(response.headers.get('x-worker-version'), 'Worker version metadata must reach responses');
-          const noindex = process.env.MODE === 'noindex';
-          assert.equal(response.headers.get('x-robots-tag'), noindex ? 'noindex, nofollow' : null);
-          const html = await response.text();
-          assert.match(html, /Time Material/);
-          assert.match(html, /rel="manifest"/);
-          const asset = html.match(/src="(\/assets\/[^"]+\.js)"/);
-          assert.ok(asset?.[1].startsWith('/assets/'), 'SSR must reference a client bundle');
-          assert.equal((await get(asset[1])).status, 200);
-          const manifest = await get('/__Time/manifest.webmanifest');
-          assert.equal(manifest.status, 200);
-          assert.match(manifest.headers.get('content-type'), /manifest\+json/);
-          assert.ok((await manifest.json()).name);
-          assert.equal((await get('/?install=1&platform=ios', 10000, { headers: { accept: 'text/html' } })).status, 200);
-          assert.equal((await get('/fonts/inter-400.woff2')).status, 200);
-          const robots = await get('/robots.txt');
-          assert.equal(robots.status, 200);
-          assert.ok((await robots.text()).includes(noindex ? 'Disallow: /' : 'Allow: /'));
-          JS
-            kill -- -"$preview_pid"
-            wait "$preview_pid" || true
-            preview_pid=''
-          done
+        run: node scripts/ci/worker-smoke.mjs
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: cloudflare-worker
@@ -116,6 +83,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           persist-credentials: false
+          fetch-depth: 0
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: 22
@@ -126,6 +94,22 @@ jobs:
         with:
           name: cloudflare-worker
           path: dist/
+      - name: Recheck exact commit CI and release before credentials
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TARGET: ${{ needs.build.outputs.environment }}
+        run: |
+          if [ "$TARGET" = production ]; then
+            node scripts/release/guard.mjs release
+            node scripts/release/published.mjs
+          else
+            node scripts/release/guard.mjs stage
+          fi
+      - name: Capture and verify healthy production version before publication
+        id: previous
+        if: needs.build.outputs.environment == 'production'
+        run: |
+          node scripts/release/production-smoke.mjs capture
       # Credentials exist only during publication; no build/install script runs here.
       - name: Publish production or named stage preview
         id: publish
@@ -166,52 +150,21 @@ jobs:
         if: needs.build.outputs.environment == 'production'
         env:
           VERSION_ID: ${{ steps.publish.outputs.version_id }}
-        run: |
-          node --input-type=module <<'JS'
-          import assert from 'node:assert/strict';
-          const base = 'https://time.szolotov.com';
-          const get = (path, timeout = 10000) => fetch(base + path, { signal: AbortSignal.timeout(timeout) });
-          const deadline = Date.now() + 120000;
-          let response;
-          while (Date.now() < deadline) {
-            try { response = await get('/', 3000); if (response.ok && response.headers.get('x-worker-version') === process.env.VERSION_ID) break; } catch {}
-            await new Promise((resolve) => setTimeout(resolve, 1000));
-          }
-          assert.equal(response?.status, 200);
-          assert.equal(response.headers.get('x-worker-version'), process.env.VERSION_ID);
-          const html = await response.text();
-          assert.match(html, /Time Material/);
-          const asset = html.match(/src="(\/assets\/[^"]+\.js)"/);
-          assert.ok(asset?.[1].startsWith('/assets/'));
-          assert.equal((await get(asset[1])).status, 200);
-          const manifest = await get('/__Time/manifest.webmanifest');
-          assert.equal(manifest.status, 200);
-          assert.equal(manifest.headers.get('x-worker-version'), process.env.VERSION_ID);
-          assert.ok((await manifest.json()).name);
-          JS
+        run: node scripts/release/production-smoke.mjs verify
       - name: Roll back only the failed production version
-        if: failure() && steps.smoke.outcome == 'failure' && steps.publish.outputs.version_id != ''
+        if: failure() && steps.smoke.outcome == 'failure' && steps.publish.outputs.version_id != '' && steps.previous.outputs.version_id != ''
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           VERSION_ID: ${{ steps.publish.outputs.version_id }}
+          PREVIOUS_VERSION_ID: ${{ steps.previous.outputs.version_id }}
         run: |
           node --input-type=module <<'JS'
           const response = await fetch('https://time.szolotov.com/', { signal: AbortSignal.timeout(10000) });
           if (response.headers.get('x-worker-version') !== process.env.VERSION_ID) throw Error('Current version is not the failed version: refusing automatic rollback; manual inspection required');
           JS
-          npx --no-install wrangler rollback --yes --name time-material --message 'Production smoke failed'
-          node --input-type=module <<'JS'
-          const deadline = Date.now() + 60000;
-          while (Date.now() < deadline) {
-            try {
-              const response = await fetch('https://time.szolotov.com/', { signal: AbortSignal.timeout(3000) });
-              if (response.ok && response.headers.get('x-worker-version') !== process.env.VERSION_ID) process.exit(0);
-            } catch {}
-            await new Promise((resolve) => setTimeout(resolve, 1000));
-          }
-          throw Error('Rollback returned but the previous version is not confirmed answering; manual inspection required');
-          JS
+          npx --no-install wrangler rollback "$PREVIOUS_VERSION_ID" --yes --name time-material --message 'Production smoke failed'
+          VERSION_ID="$PREVIOUS_VERSION_ID" node scripts/release/production-smoke.mjs verify
       - name: Stage verification requires Access authentication
         if: needs.build.outputs.environment == 'staging'
         run: echo 'Stage preview published. App behavior behind stage.time.szolotov.com Access remains unverified until checked with an authorized session; an Access login redirect is not an app smoke test.'

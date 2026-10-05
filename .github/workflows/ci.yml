@@ -51,7 +51,11 @@ jobs:
       - run: npm run typecheck
 
   test:
-    name: test
+    name: test (node ${{ matrix.node }})
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [22, 24]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -60,16 +64,65 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
-          node-version: 22
+          node-version: ${{ matrix.node }}
           cache: npm
       - run: npm ci
-      - run: npm run test:ci
-      - run: node --test scripts/ci/*.test.mjs
+      - name: Tests with coverage
+        if: matrix.node == 22
+        run: |
+          set -euo pipefail
+          mkdir -p coverage
+          npm run test:coverage 2>&1 | tee coverage/summary.txt
+      - name: Tests
+        if: matrix.node != 22
+        run: npm test
+      - name: Coverage summary
+        if: matrix.node == 22 && !cancelled()
+        run: |
+          if [ -f coverage/summary.txt ]; then
+            {
+              echo '### Node 22 test coverage'
+              echo '```text'
+              sed -n '/start of coverage report/,/end of coverage report/p' coverage/summary.txt
+              echo '```'
+            } >>"$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: matrix.node == 22 && !cancelled()
+        with:
+          name: coverage
+          path: coverage/summary.txt
+          retention-days: 7
 
   build:
-    name: build
+    name: build (node ${{ matrix.node }})
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [22, 24]
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Smoke-test built server
+        run: node scripts/ci/smoke.mjs
+
+  browser:
+    name: browser (${{ matrix.browser }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, webkit]
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
@@ -80,6 +133,62 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
+      - name: Install browser
+        env:
+          BROWSER: ${{ matrix.browser }}
+        run: npx playwright install --with-deps "$BROWSER"
+      - name: Test built board on desktop and mobile, light and dark
+        env:
+          BROWSER_ENGINES: ${{ matrix.browser }}
+          BROWSER_BASE_URL: http://127.0.0.1:4173
+          BROWSER_ARTIFACT_DIR: artifacts/browser
+        run: |
+          set -euo pipefail
+          log_file="${RUNNER_TEMP}/time-material-preview.log"
+          setsid npm run preview -- --host 127.0.0.1 --port 4173 --strictPort >"$log_file" 2>&1 &
+          preview_pid=$!
+          cleanup() {
+            kill -- -"$preview_pid" 2>/dev/null || true
+            wait "$preview_pid" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+          ready=false
+          for _attempt in {1..60}; do
+            if curl --fail --silent --max-time 2 "$BROWSER_BASE_URL/" >/dev/null; then
+              ready=true
+              break
+            fi
+            sleep 1
+          done
+          if [ "$ready" != true ]; then
+            cat "$log_file"
+            exit 1
+          fi
+          if ! npm run test:browser; then
+            cat "$log_file"
+            exit 1
+          fi
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: browser-${{ matrix.browser }}
+          path: artifacts/browser/
+          retention-days: 7
+
+  security:
+    name: security
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm audit --audit-level=high
 
   commits:
     name: commits
@@ -128,10 +237,29 @@ jobs:
           advanced-security: false
           annotations: true
 
+  worker:
+    name: Worker
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      WRANGLER_SEND_METRICS: "false"
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22
+      - run: npm ci
+      - run: npm run build:cloudflare
+      - run: npm run deploy:cloudflare:dry-run
+      - run: node scripts/ci/worker-smoke.mjs
+
   ci-ok:
-    name: CI OK
+    name: CI
     if: always()
-    needs: [lint, typecheck, test, build, commits, branch-name, workflows]
+    needs:
+      [lint, typecheck, test, build, worker, browser, security, commits, branch-name, workflows]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -144,6 +272,9 @@ jobs:
           TYPECHECK: ${{ needs.typecheck.result }}
           TEST: ${{ needs.test.result }}
           BUILD: ${{ needs.build.result }}
+          WORKER: ${{ needs.worker.result }}
+          BROWSER: ${{ needs.browser.result }}
+          SECURITY: ${{ needs.security.result }}
           COMMITS: ${{ needs.commits.result }}
           BRANCH: ${{ needs.branch-name.result }}
           WORKFLOWS: ${{ needs.workflows.result }}

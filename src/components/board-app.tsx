@@ -33,6 +33,8 @@ import { CityDesk } from "./city-desk";
 import { Inspector } from "./inspector";
 import { Loom } from "./loom";
 import { Button, IconButton } from "./ui";
+import { BoardCalendar } from "./board-calendar";
+import { AccountsPanel } from "./accounts-panel";
 
 function readStorage(key: string): string | null {
   try {
@@ -63,19 +65,6 @@ const BACKGROUNDS: { id: Background; label: string }[] = [
   { id: "full", label: "Full" },
 ];
 
-function PenUnderline() {
-  return (
-    <svg aria-hidden className="mt-1 h-2 w-36 text-accent" viewBox="0 0 144 8" fill="none">
-      <path
-        d="M2 5.2C28 2 52 7 78 4.4S120 2.2 142 5"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
 export function BoardApp() {
   const navigate = useNavigate();
   const cleanedSharedQuery = useRef(false);
@@ -94,7 +83,6 @@ export function BoardApp() {
   const [attempt, setAttempt] = useState(0);
   const [copied, setCopied] = useState(false);
   const [theme, setTheme] = useState<"light" | "dark" | "system">("system");
-  const dateScroll = useRef<{ x: number; y: number } | null>(null);
   const [background, setBackground] = useState<Background>("quiet");
   const [systemDark, setSystemDark] = useState(false);
   const darkTheme = theme === "dark" || (theme === "system" && systemDark);
@@ -295,13 +283,12 @@ export function BoardApp() {
       <a className="skip" href="#loom">
         Skip to the day
       </a>
-      <header className="flex flex-col gap-5">
-        <div>
-          <h1 className="text-3xl font-medium leading-tight">Time Material</h1>
-          <PenUnderline />
-          <p className="mt-3 max-w-xl text-sm text-pretty text-mute">
-            A working day across cities. The shared hours are marked. Calendar and Zoom show up only
-            when they can actually be read.
+      <header className="brand-header flex items-center gap-4">
+        <img src="/clock-icon.png" alt="" width="64" height="64" className="brand-clock shrink-0" />
+        <div className="min-w-0">
+          <h1 className="text-3xl font-medium leading-tight tracking-tight">Time Material</h1>
+          <p className="mt-2 text-sm text-pretty text-mute">
+            Find a time that works across cities.
           </p>
         </div>
       </header>
@@ -328,20 +315,13 @@ export function BoardApp() {
           >
             <ChevronRight aria-hidden className="size-4" />
           </IconButton>
-          <input
-            type="date"
-            aria-label="Board date"
-            onPointerDown={(event) => {
-              dateScroll.current = { x: window.scrollX, y: window.scrollY };
-              event.currentTarget.focus({ preventScroll: true });
-            }}
+          <BoardCalendar
             value={board.day}
-            className="h-11 rounded-sm border border-line bg-canvas px-2 text-sm"
-            onChange={(event) => {
-              if (!parseDay(event.target.value)) return;
-              const position = dateScroll.current;
-              update({ ...board, day: event.target.value });
-              if (position) requestAnimationFrame(() => window.scrollTo(position.x, position.y));
+            onChange={(day) => {
+              if (!parseDay(day)) return;
+              const position = { x: window.scrollX, y: window.scrollY };
+              update({ ...board, day });
+              requestAnimationFrame(() => window.scrollTo(position.x, position.y));
             }}
           />
           <p className="min-w-36 px-1 text-sm tabular-nums">
@@ -599,6 +579,10 @@ export function BoardApp() {
           linkCopied={linkCopied}
           calendarUrl={googleCalendarUrl(board, view, schedule)}
         />
+        <details className="panel accounts-disclosure p-4">
+          <summary className="press cursor-pointer text-sm">Accounts and calendar sync</summary>
+          <AccountsPanel onSync={() => setAttempt((value) => value + 1)} />
+        </details>
       </div>
     </main>
   );
