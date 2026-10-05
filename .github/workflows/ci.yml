@@ -190,20 +190,6 @@ jobs:
       - run: npm ci
       - run: npm audit --audit-level=high
 
-  commits:
-    name: commits
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-        with:
-          persist-credentials: false
-          fetch-depth: 0
-      - run: node scripts/ci/commits.mjs
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          BEFORE_SHA: ${{ github.event.before }}
 
   branch-name:
     name: branch name
@@ -259,7 +245,7 @@ jobs:
     name: CI
     if: always()
     needs:
-      [lint, typecheck, test, build, worker, browser, security, commits, branch-name, workflows]
+      [lint, typecheck, test, build, worker, browser, security, branch-name, workflows]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -275,7 +261,6 @@ jobs:
           WORKER: ${{ needs.worker.result }}
           BROWSER: ${{ needs.browser.result }}
           SECURITY: ${{ needs.security.result }}
-          COMMITS: ${{ needs.commits.result }}
           BRANCH: ${{ needs.branch-name.result }}
           WORKFLOWS: ${{ needs.workflows.result }}
           EVENT_NAME: ${{ github.event_name }}

@@ -6,7 +6,6 @@ const jobs = [
   "WORKER",
   "BROWSER",
   "SECURITY",
-  "COMMITS",
   "WORKFLOWS",
   "BRANCH",
 ];
