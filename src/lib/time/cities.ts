@@ -57,3 +57,19 @@ export function cityByZone(zone: string): CityOption | undefined {
 export function labelFromZone(zone: string): string {
   return cityByZone(zone)?.label ?? (zone.split("/").pop() ?? zone).replaceAll("_", " ");
 }
+
+let searchable: readonly CityOption[] | undefined;
+export function searchableCities(): readonly CityOption[] {
+  if (searchable) return searchable;
+  const extra =
+    typeof Intl.supportedValuesOf === "function" ? Intl.supportedValuesOf("timeZone") : [];
+  const known = new Set([...CITIES.map((city) => city.zone), "UTC"]);
+  searchable = [
+    ...CITIES,
+    { zone: "UTC", label: "UTC", region: "Universal time" },
+    ...extra
+      .filter((zone) => !known.has(zone))
+      .map((zone) => ({ zone, label: labelFromZone(zone), region: zone.split("/")[0]! })),
+  ];
+  return searchable;
+}

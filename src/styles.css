@@ -25,22 +25,22 @@
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
 
-  --color-canvas: #f3efe6;
-  --color-surface: #fbf8f2;
-  --color-inset: #ebe6dc;
-  --color-ink: #1a1814;
-  --color-mute: #5c564c;
-  --color-line: #e3ddd2;
-  --color-accent: #1e5c40;
-  --color-accent-fg: #f7f4ee;
-  --color-good: #1e5c40;
+  --color-canvas: #f5f7fb;
+  --color-surface: #ffffff;
+  --color-inset: #e8eef6;
+  --color-ink: #17202c;
+  --color-mute: #556174;
+  --color-line: #dce3ec;
+  --color-accent: #165ec9;
+  --color-accent-fg: #ffffff;
+  --color-good: #165ec9;
   --color-warn: #8a3d36;
-  --color-mark: #e4efe8;
+  --color-mark: #e8f0ff;
 
   --radius-sm: 6px;
   --radius-md: 10px;
-  --radius-lg: 16px;
-  --radius-bar: 20px;
+  --radius-lg: 22px;
+  --radius-bar: 24px;
   --radius-thumb: 8px;
 
   --text-xs: 0.75rem;
@@ -78,11 +78,11 @@
       --color-ink: #f4f0e6;
       --color-mute: #c8c0b4;
       --color-line: #2c2c2c;
-      --color-accent: #9dcfb4;
-      --color-accent-fg: #04140c;
+      --color-accent: #f3cb59;
+      --color-accent-fg: #191403;
       --color-good: #9dcfb4;
       --color-warn: #f0b4ae;
-      --color-mark: #163028;
+      --color-mark: #302816;
     }
   }
 
@@ -94,26 +94,26 @@
     --color-ink: #f4f0e6;
     --color-mute: #c8c0b4;
     --color-line: #2c2c2c;
-    --color-accent: #9dcfb4;
-    --color-accent-fg: #04140c;
+    --color-accent: #f3cb59;
+    --color-accent-fg: #191403;
     --color-good: #9dcfb4;
     --color-warn: #f0b4ae;
-    --color-mark: #163028;
+    --color-mark: #302816;
   }
 
   :root[data-theme="light"] {
     color-scheme: light;
-    --color-canvas: #f3efe6;
-    --color-surface: #fbf8f2;
-    --color-inset: #ebe6dc;
-    --color-ink: #1a1814;
-    --color-mute: #5c564c;
-    --color-line: #e3ddd2;
-    --color-accent: #1e5c40;
-    --color-accent-fg: #f7f4ee;
-    --color-good: #1e5c40;
+    --color-canvas: #f5f7fb;
+    --color-surface: #ffffff;
+    --color-inset: #e8eef6;
+    --color-ink: #17202c;
+    --color-mute: #556174;
+    --color-line: #dce3ec;
+    --color-accent: #165ec9;
+    --color-accent-fg: #ffffff;
+    --color-good: #165ec9;
     --color-warn: #8a3d36;
-    --color-mark: #e4efe8;
+    --color-mark: #e8f0ff;
   }
 
   html {
@@ -360,5 +360,345 @@
 
   :root[data-background="full"] body::before {
     display: none;
+  }
+}
+
+/* Frosted control chrome stays separate from the comparison grid. */
+#day {
+  --glass-control: color-mix(in oklab, var(--color-surface) 80%, transparent);
+  --glass-menu: color-mix(in oklab, var(--color-surface) 88%, transparent);
+  --glass-edge: color-mix(in oklab, var(--color-ink) 12%, transparent);
+  --glass-glint: color-mix(in oklab, var(--color-surface) 70%, transparent);
+  --glass-shadow:
+    0 2px 5px color-mix(in oklab, var(--color-ink) 6%, transparent),
+    inset 0 1px 0 var(--glass-glint);
+}
+
+#day :is(button:not([data-edge]), a.press, summary, select, input:not([type="checkbox"])) {
+  border: 1px solid var(--glass-edge);
+  border-radius: 14px;
+  background: var(--glass-control);
+  color: var(--color-ink);
+  box-shadow: var(--glass-shadow);
+  -webkit-backdrop-filter: blur(14px) saturate(145%);
+  backdrop-filter: blur(14px) saturate(145%);
+  transition:
+    background var(--t-quick) var(--ease-out),
+    box-shadow var(--t-quick) var(--ease-out),
+    transform var(--t-quick) var(--ease-out);
+}
+
+#day summary {
+  width: fit-content;
+  min-height: 2.75rem;
+  padding: 0.6rem 0.85rem;
+  list-style: none;
+}
+
+#day summary::-webkit-details-marker {
+  display: none;
+}
+
+#day summary::after {
+  content: "⌄";
+  display: inline-block;
+  margin-left: 0.6rem;
+  color: var(--color-mute);
+}
+
+#day details[open] > summary::after {
+  transform: rotate(180deg);
+}
+
+#day :is(button:not([data-edge]), a.press, summary):hover:not(:disabled) {
+  background: color-mix(in oklab, var(--color-surface) 95%, transparent);
+  box-shadow:
+    0 3px 9px color-mix(in oklab, var(--color-ink) 10%, transparent),
+    inset 0 1px 0 var(--glass-glint);
+}
+
+#day :is(button:not([data-edge]), a.press, summary):active:not(:disabled) {
+  background: var(--color-inset);
+  box-shadow: inset 0 1px 3px color-mix(in oklab, var(--color-ink) 12%, transparent);
+}
+
+#day :is(.is-on, [aria-pressed="true"], [aria-checked="true"], details[open] > summary) {
+  background: color-mix(in oklab, var(--color-accent) 16%, var(--color-surface));
+  border-color: color-mix(in oklab, var(--color-accent) 55%, var(--color-line));
+  color: var(--color-accent);
+  box-shadow:
+    var(--glass-shadow),
+    inset 0 -2px 0 var(--color-accent);
+}
+
+#day button.bg-ink {
+  background: var(--color-ink);
+  color: var(--color-canvas);
+}
+
+#day button.bg-ink:hover:not(:disabled) {
+  background: color-mix(in oklab, var(--color-ink) 88%, var(--color-accent));
+}
+
+#day :is(button:not([data-edge]), a.press, summary, select, input):focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 3px;
+}
+
+#day button:disabled {
+  opacity: 0.4;
+  box-shadow: none;
+}
+
+#day input[type="checkbox"] {
+  accent-color: var(--color-accent);
+}
+
+#day .glass-menu,
+#day .float-bar {
+  background: var(--glass-menu);
+  border: 1px solid var(--glass-edge);
+  border-radius: 22px;
+  box-shadow:
+    0 10px 28px color-mix(in oklab, var(--color-ink) 10%, transparent),
+    0 2px 5px color-mix(in oklab, var(--color-ink) 8%, transparent),
+    inset 0 1px 0 var(--glass-glint);
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
+  backdrop-filter: blur(24px) saturate(150%);
+}
+
+#day .panel:has(.city-row-menu[open]) {
+  z-index: 40;
+}
+
+#day .city-row:has(> .city-row-menu[open]) {
+  z-index: 50;
+}
+
+#day .city-row-menu[open] {
+  z-index: 60;
+}
+
+#day .city-row-menu > summary {
+  min-height: 1.75rem;
+  padding: 0.15rem 0.55rem;
+  line-height: 1.4;
+}
+
+#day .city-row-menu > summary::after {
+  content: none;
+}
+
+#day .city-row-menu > .glass-menu {
+  max-height: min(32rem, 70vh);
+  overflow-y: auto;
+  max-width: calc(100vw - 2rem);
+}
+
+@media (max-width: 639px) {
+  #day .city-row-menu > .glass-menu {
+    left: -5rem;
+  }
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  #day {
+    --glass-control: var(--color-surface);
+    --glass-menu: var(--color-surface);
+  }
+}
+
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+  #day {
+    --glass-control: var(--color-surface);
+    --glass-menu: var(--color-surface);
+    --glass-edge: var(--color-mute);
+  }
+
+  #day :is(button:not([data-edge]), a.press, summary, select, input, .glass-menu, .float-bar) {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #day :is(button, a.press, summary, select, input) {
+    transition: none;
+    transform: none;
+  }
+}
+
+/* Material-inspired theme switch, aligned to the toolbar's trailing edge. */
+#day .theme-switch {
+  position: relative;
+  width: 3.5rem;
+  height: 2rem;
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--color-inset);
+}
+#day .theme-switch[aria-checked="true"] {
+  background: var(--color-accent);
+}
+#day .theme-switch-thumb {
+  display: grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  color: var(--color-ink);
+  background: var(--color-surface);
+  box-shadow: 0 1px 4px #0003;
+  transition: transform var(--t-quick) var(--ease-out);
+}
+#day .theme-switch[aria-checked="true"] .theme-switch-thumb {
+  transform: translateX(1.5rem);
+}
+#day .city-chooser summary {
+  font-size: 0.75rem;
+  padding: 0.4rem;
+}
+#day .panel:has(.city-chooser details[open]) {
+  z-index: 40;
+}
+@media (prefers-reduced-motion: reduce) {
+  #day .theme-switch-thumb {
+    transition: none;
+  }
+}
+
+/* Quiet menu rows give the frosted container a single, clean silhouette. */
+#day .glass-menu button:not([data-edge]) {
+  border-color: transparent;
+  border-radius: 10px;
+  background: transparent;
+  box-shadow: none;
+  padding-inline: 0.65rem;
+}
+#day .glass-menu button:not([data-edge]):hover:not(:disabled) {
+  background: color-mix(in oklab, var(--color-accent) 10%, var(--color-surface));
+  box-shadow: none;
+}
+#day .glass-menu button:not([data-edge]):active:not(:disabled) {
+  background: var(--color-inset);
+}
+#day .glass-menu :is(button[aria-pressed="true"], button[aria-checked="true"], button.is-on) {
+  color: var(--color-accent);
+  background: color-mix(in oklab, var(--color-accent) 16%, var(--color-surface));
+  box-shadow: inset 0 -2px 0 var(--color-accent);
+}
+
+/* A shared glass material for the whole interface, independent of the backdrop option. */
+#day {
+  --glass-panel: color-mix(in oklab, var(--color-surface) 86%, transparent);
+  --glass-sheen: linear-gradient(
+    145deg,
+    color-mix(in oklab, var(--color-surface) 42%, transparent),
+    transparent 38%,
+    color-mix(in oklab, var(--color-accent) 3%, transparent) 100%
+  );
+  --glass-spring: cubic-bezier(0.2, 0.8, 0.25, 1.08);
+}
+
+#day .panel {
+  background-color: var(--glass-panel);
+  background-image: var(--glass-sheen);
+  border-color: var(--glass-edge);
+  box-shadow:
+    0 8px 26px color-mix(in oklab, var(--color-ink) 7%, transparent),
+    inset 0 1px 0 var(--glass-glint);
+  -webkit-backdrop-filter: blur(22px) saturate(135%);
+  backdrop-filter: blur(22px) saturate(135%);
+}
+
+#day :is(.glass-menu, .float-bar) {
+  background-color: var(--glass-menu);
+  background-image: var(--glass-sheen);
+}
+
+#day :is(button:not([data-edge]), a.press, summary, select, input:not([type="checkbox"])) {
+  background-image: linear-gradient(
+    to bottom,
+    color-mix(in oklab, var(--color-surface) 28%, transparent),
+    transparent 65%
+  );
+}
+
+#day .glass-menu button:not([data-edge]) {
+  background-image: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  #day :is(button:not([data-edge]):not(.theme-switch), a.press, summary):hover:not(:disabled) {
+    transform: translateY(-1px);
+  }
+
+  #day .glass-menu button:not([data-edge]):hover:not(:disabled) {
+    transform: none;
+  }
+}
+
+#day :is(button:not([data-edge]):not(.theme-switch), a.press, summary):active:not(:disabled) {
+  transform: translateY(0) scale(0.985);
+}
+
+#day details[open] > .glass-menu {
+  transform-origin: top left;
+  animation: glass-menu-reveal 220ms var(--glass-spring) both;
+}
+
+#day .city-row-menu[open] > .glass-menu {
+  transform-origin: top right;
+}
+
+@keyframes glass-menu-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  #day {
+    --glass-panel: var(--color-surface);
+    --glass-sheen: none;
+  }
+
+  #day
+    :is(.panel, .float-bar, .glass-menu, button:not([data-edge]), a.press, summary, select, input) {
+    background-image: none;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+  #day {
+    --glass-panel: var(--color-surface);
+    --glass-sheen: none;
+    --glass-glint: transparent;
+  }
+
+  #day
+    :is(.panel, .float-bar, .glass-menu, button:not([data-edge]), a.press, summary, select, input) {
+    background-image: none;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+
+  #day :is(.panel, .float-bar, .glass-menu) {
+    box-shadow: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #day details[open] > .glass-menu {
+    animation: none;
+  }
+
+  #day :is(button:not([data-edge]), a.press, summary):is(:hover, :active) {
+    transform: none;
   }
 }

@@ -1,10 +1,6 @@
 import type { ScheduleEvent, ScheduleResponse } from "../schedule/types.ts";
 import { zoomLabel } from "../schedule/parse.ts";
-import {
-  clampCut,
-  viewBounds,
-  type Board,
-} from "./board.ts";
+import { clampCut, viewBounds, type Board } from "./board.ts";
 import {
   axisMinutes,
   findOpenings,
@@ -14,7 +10,17 @@ import {
   type Interval,
   type Place,
 } from "./intersect.ts";
-import { formatDayLabel, formatHm, formatLength, partsInZone } from "./zoned.ts";
+import {
+  todayInZone,
+  parseDay,
+  wallToUtc,
+  midnightUtc,
+  dayMinutes,
+  formatDayLabel,
+  formatHm,
+  formatLength,
+  partsInZone,
+} from "./zoned.ts";
 
 export type PlaceReadout = {
   place: Place;
@@ -88,8 +94,14 @@ export function derive(board: Board, schedule: ScheduleResponse | null): Derived
     workStart: 9 * 60,
     workEnd: 17 * 60,
   };
-  const { startMin, endMin } = viewBounds(board.span);
-  const cutMinutes = clampCut(board.cutMinutes, board.durationMin);
+  let { startMin, endMin } = viewBounds(board.span, dayMinutes(board.day, axis.zone));
+  const date = parseDay(board.day);
+  if (board.span === "workday" && date) {
+    const midnight = midnightUtc(board.day, axis.zone);
+    startMin = (wallToUtc(date.year, date.month, date.day, 7, 0, axis.zone) - midnight) / 60_000;
+    endMin = (wallToUtc(date.year, date.month, date.day, 20, 0, axis.zone) - midnight) / 60_000;
+  }
+  const cutMinutes = clampCut(board.cutMinutes, 5, dayMinutes(board.day, axis.zone));
   const cutStartUtc = utcFromAxisMinutes(cutMinutes, axis.zone, board.day);
   const cutEndUtc = cutStartUtc + board.durationMin * 60_000;
   const cut: Interval = { start: cutStartUtc, end: cutEndUtc };
@@ -112,7 +124,7 @@ export function derive(board: Board, schedule: ScheduleResponse | null): Derived
     window.from,
     window.to,
     busyAll,
-    15 * 60_000,
+    Math.min(15, board.durationMin) * 60_000,
   );
   const fitted = openings.filter(
     (interval) => interval.end - interval.start >= board.durationMin * 60_000,
@@ -132,7 +144,7 @@ export function derive(board: Board, schedule: ScheduleResponse | null): Derived
         window.from,
         window.to,
         busyAll,
-        15 * 60_000,
+        Math.min(15, board.durationMin) * 60_000,
       );
       const longest = alt.reduce<Interval | null>(
         (best, interval) =>
@@ -144,15 +156,17 @@ export function derive(board: Board, schedule: ScheduleResponse | null): Derived
       if (longest.end - longest.start < fullLength + 30 * 60_000) continue;
       partials.push({ without, interval: longest });
     }
-    partials.sort((a, b) => b.interval.end - b.interval.start - (a.interval.end - a.interval.start));
+    partials.sort(
+      (a, b) => b.interval.end - b.interval.start - (a.interval.end - a.interval.start),
+    );
   }
   const readouts: PlaceReadout[] = board.places.map((place, index) => {
     const local = partsInZone(cutStartUtc, place.zone);
     return {
       place,
       axis: index === 0,
-      localStart: formatHm(cutStartUtc, place.zone),
-      localEnd: formatHm(cutEndUtc, place.zone),
+      localStart: formatHm(cutStartUtc, place.zone, board.clockFormat),
+      localEnd: formatHm(cutEndUtc, place.zone, board.clockFormat),
       inWork: spanInWork(place, cutStartUtc, cutEndUtc, board.weekdaysOnly),
       weekend: local.weekday === 0 || local.weekday === 6,
     };
@@ -190,7 +204,11 @@ export function derive(board: Board, schedule: ScheduleResponse | null): Derived
   };
 }
 
-export function meetingBrief(board: Board, view: Derived, schedule: ScheduleResponse | null): string {
+export function meetingBrief(
+  board: Board,
+  view: Derived,
+  schedule: ScheduleResponse | null,
+): string {
   const lines = [
     "Time Material",
     formatDayLabel(board.day),
@@ -198,7 +216,7 @@ export function meetingBrief(board: Board, view: Derived, schedule: ScheduleResp
     "",
     ...view.readouts.map(
       (row) =>
-        `${row.place.label} ${row.localStart}–${row.localEnd}${row.inWork ? "" : " (outside work hours)"}`,
+        `${row.place.label} ${todayInZone(row.place.zone, view.cutStartUtc)} ${row.localStart}–${todayInZone(row.place.zone, view.cutEndUtc)} ${row.localEnd}${row.inWork ? "" : " (outside work hours)"}`,
     ),
     "",
     view.everyoneIn
@@ -228,7 +246,11 @@ export function meetingBrief(board: Board, view: Derived, schedule: ScheduleResp
 }
 
 function icsEscape(value: string): string {
-  return value.replace(/\\/g, "\\\\").replace(/\n/g, "\\n").replace(/,/g, "\\,").replace(/;/g, "\\;");
+  return value
+    .replace(/\\/g, "\\\\")
+    .replace(/\n/g, "\\n")
+    .replace(/,/g, "\\,")
+    .replace(/;/g, "\\;");
 }
 
 function icsStamp(utcMs: number): string {
@@ -274,3 +296,18 @@ export function safeZoomHref(url: string | null): string | null {
 }
 
 export { zoomLabel };
+
+export function googleCalendarUrl(
+  board: Board,
+  view: Derived,
+  schedule: ScheduleResponse | null,
+): string {
+  const params = new URLSearchParams({
+    action: "TEMPLATE",
+    text: "Meeting",
+    dates: `${icsStamp(view.cutStartUtc)}/${icsStamp(view.cutEndUtc)}`,
+    details: meetingBrief(board, view, schedule),
+    ctz: view.axis.zone,
+  });
+  return `https://calendar.google.com/calendar/render?${params}`;
+}

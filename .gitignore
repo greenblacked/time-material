@@ -9,3 +9,12 @@ artifacts/
 attachments/
 *.log
 .node_modules.lock
+
+# Local agent instructions, roles, skills and reports
+/.agent/
+/.agents/
+/.Time Material/
+/.Time Material/
+
+# Cloudflare local runtime state
+/.wrangler/

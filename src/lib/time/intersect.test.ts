@@ -85,9 +85,9 @@ describe("meeting brief", () => {
     const board = defaultBoard(Date.parse("2026-10-05T12:00:00.000Z"));
     const view = derive(board, null);
     const brief = meetingBrief(board, view, null);
-    assert.match(brief, /Kyiv 16:00–17:00/);
-    assert.match(brief, /London 14:00–15:00/);
-    assert.match(brief, /New York 09:00–10:00/);
+    assert.match(brief, /Kyiv 2026-10-05 16:00–2026-10-05 17:00/);
+    assert.match(brief, /London 2026-10-05 14:00–2026-10-05 15:00/);
+    assert.match(brief, /New York 2026-10-05 09:00–2026-10-05 10:00/);
     assert.match(brief, /Calendar was not applied/);
     assert.doesNotMatch(brief, /clear/i);
   });

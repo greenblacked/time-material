@@ -54,4 +54,9 @@ Into `stage` and into `main`, every time:
 
 Do not force-push a branch that has already been pushed. An unpushed commit may be reworded.
 
-Hosting for `stage` and `main` is not connected in this repository yet. The branches and the checks are the gate. Say where each environment should deploy when that should be added.
+Cloudflare Workers deployment is configured in `.github/workflows/deploy.yml`.
+`main` publishes production at `https://time.szolotov.com`; `stage` publishes
+the named `stage` preview of the same Worker at `https://stage.time.szolotov.com`.
+See `docs/cloudflare-deployment.md` for credentials, local checks and rollback.
+Cloudflare Zero Trust protection is managed separately for the stage hostname.
+Local validation does not establish that either environment has been published.

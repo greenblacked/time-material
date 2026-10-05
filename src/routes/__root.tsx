@@ -16,10 +16,10 @@ export const Route = createRootRoute({
         content:
           "Compare a working day across cities and set it against your Google Calendar, including the Zoom calls already on it.",
       },
-      { name: "theme-color", content: "#f3efe6" },
+      { name: "theme-color", content: "#f5f7fb" },
     ],
     links: [
-      { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
+      { rel: "icon", type: "image/png", sizes: "64x64", href: "/favicon.png" },
       { rel: "stylesheet", href: appCss },
       { rel: "manifest", href: "/__Time/manifest.webmanifest" },
       { rel: "apple-touch-icon", href: "/__Time/icon-180.png" },

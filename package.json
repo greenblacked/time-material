@@ -16,10 +16,15 @@
     "preview:stop": "node scripts/preview.mjs stop",
     "typecheck": "tsc --noEmit",
     "check:auth": "node scripts/check-auth-invariant.mjs",
-    "test": "node --test 'scripts/**/*.test.mjs' && node --experimental-strip-types --test src/lib/app-data/app-data.test.ts src/lib/app-data/readiness-schedule.test.ts src/lib/auth/gate-identity.test.ts src/lib/auth/sign-in-gate.test.ts",
-    "test:ci": "node --experimental-strip-types --test src/lib/time/intersect.test.ts src/lib/schedule/parse.test.ts src/lib/app-data/app-data.test.ts src/lib/app-data/readiness-schedule.test.ts src/lib/auth/gate-identity.test.ts src/lib/auth/sign-in-gate.test.ts",
+    "test": "node --test 'scripts/**/*.test.mjs' && node --experimental-strip-types --test src/lib/time/board.test.ts src/lib/app-data/app-data.test.ts src/lib/app-data/readiness-schedule.test.ts src/lib/auth/gate-identity.test.ts src/lib/auth/sign-in-gate.test.ts",
+    "test:ci": "node --experimental-strip-types --test src/lib/time/intersect.test.ts src/lib/time/board.test.ts src/lib/schedule/parse.test.ts src/lib/app-data/app-data.test.ts src/lib/app-data/readiness-schedule.test.ts src/lib/auth/gate-identity.test.ts src/lib/auth/sign-in-gate.test.ts",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "build:cloudflare": "DEPLOY_TARGET=cloudflare node scripts/with-app-env.mjs vite build",
+    "preview:cloudflare": "DEPLOY_TARGET=cloudflare node scripts/with-app-env.mjs vite preview",
+    "deploy:cloudflare:dry-run": "wrangler deploy --dry-run --no-autoconfig --no-install-skills --config dist/server/wrangler.json",
+    "deploy:cloudflare": "wrangler deploy --no-autoconfig --no-install-skills --config dist/server/wrangler.json",
+    "deploy:cloudflare:stage": "wrangler preview --no-install-skills --config dist/server/wrangler.json --name stage --ignore-base-config"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.4",
@@ -61,7 +66,7 @@
     "kysely": "^0.28.5",
     "lightningcss": "^1.28.0",
     "lucide-react": "^0.510.0",
-    "nitro": "3.0.260610-beta",
+    "nitro": "3.0.260903-beta",
     "pg": "^8.16.3",
     "react": "^19.2.0",
     "react-day-picker": "^9.14.0",
@@ -80,6 +85,7 @@
     "zustand": "^5.0.0"
   },
   "devDependencies": {
+    "@cloudflare/vite-plugin": "1.62.5",
     "@eslint/js": "^9.20.0",
     "@types/node": "^22.16.5",
     "@types/pg": "^8.11.10",
@@ -93,6 +99,7 @@
     "globals": "^15.15.0",
     "playwright": "^1.62.0",
     "prettier": "^3.4.0",
-    "typescript-eslint": "^8.56.1"
+    "typescript-eslint": "^8.56.1",
+    "wrangler": "4.147.0"
   }
 }

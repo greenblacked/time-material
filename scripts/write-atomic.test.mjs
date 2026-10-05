@@ -164,26 +164,25 @@ test("cli: relative paths follow the script's root, not the caller's cwd", () =>
   assert.equal(existsSync(join(root, "public/og.jpg")), false);
 });
 
-test("every hand-over the og skill prints is one this script accepts", () => {
-  // The card and banner recipes live in the skill's references/, not SKILL.md.
-  const skillDir = join(TEMPLATE_ROOT, ".Time Material/skills/og");
-  const docs = [
-    join(skillDir, "SKILL.md"),
-    ...readdirSync(join(skillDir, "references")).map((f) => join(skillDir, "references", f)),
+test("cli: hands over card, banner and identity using workspace-relative paths", () => {
+  const root = makeWorkspace();
+  mkdirSync(join(root, "scripts"));
+  const script = join(root, "scripts/write-atomic.mjs");
+  writeFileSync(script, readFileSync(SCRIPT));
+  const assets = [
+    [".Time Material/og.jpg.tmp", "public/og.jpg", "new card"],
+    [".Time Material/x-banner.jpg.tmp", "public/x-banner.jpg", "new banner"],
+    [".Time Material/site.json.tmp", "src/lib/og/site.json", '{"title":"New identity"}'],
   ];
-  const invocations = docs.flatMap(
-    (path) => readFileSync(path, "utf8").match(/node scripts\/write-atomic\.mjs[^\n`]*/g) ?? [],
-  );
-  assert.ok(invocations.length >= 3, "og.jpg, x-banner.jpg and site.json each hand over");
-  for (const line of invocations) {
-    const argv = line.replace("node scripts/write-atomic.mjs", "").trim().split(/\s+/);
-    const args = parseWriteAtomicArgs(argv);
-    assert.equal(args.error, undefined, line);
-    assert.equal(
-      stagingError({ staged: args.staged, target: args.target, publicDir: "/workspace/public" }),
-      null,
-      line,
-    );
+  for (const [staged, target, bytes] of assets) {
+    writeFileSync(join(root, staged), bytes);
+    const run = spawnSync(process.execPath, [script, staged, target], {
+      cwd: tmpdir(),
+      encoding: "utf8",
+    });
+    assert.equal(run.status, 0, run.stdout + run.stderr);
+    assert.equal(readFileSync(join(root, target), "utf8"), bytes);
+    assert.equal(existsSync(join(root, staged)), false);
   }
 });
 

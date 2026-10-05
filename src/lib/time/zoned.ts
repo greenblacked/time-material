@@ -131,7 +131,14 @@ export function parseDay(day: string): { year: number; month: number; day: numbe
   const year = Number(match[1]);
   const month = Number(match[2]);
   const date = Number(match[3]);
-  if (month < 1 || month > 12 || date < 1 || date > 31) return null;
+  if (year < 100 || month < 1 || month > 12 || date < 1 || date > 31) return null;
+  const actual = new Date(Date.UTC(year, month - 1, date));
+  if (
+    actual.getUTCFullYear() !== year ||
+    actual.getUTCMonth() !== month - 1 ||
+    actual.getUTCDate() !== date
+  )
+    return null;
   return { year, month, day: date };
 }
 
@@ -148,9 +155,17 @@ export function midnightUtc(day: string, timeZone: string): number {
   return wallToUtc(parsed.year, parsed.month, parsed.day, 0, 0, timeZone);
 }
 
-export function formatHm(utcMs: number, timeZone: string): string {
+export type ClockFormat = "24h" | "12h" | "mixed";
+
+export function formatHm(utcMs: number, timeZone: string, format: ClockFormat = "24h"): string {
   const parts = partsInZone(utcMs, timeZone);
-  return `${pad2(parts.hour)}:${pad2(parts.minute)}`;
+  const full = `${pad2(parts.hour)}:${pad2(parts.minute)}`;
+  const twelve = `${parts.hour % 12 || 12}:${pad2(parts.minute)} ${parts.hour < 12 ? "AM" : "PM"}`;
+  const nativeTwelve =
+    /^(America\/(New_York|Chicago|Denver|Los_Angeles|Toronto|Vancouver)|Australia\/|Asia\/Kolkata|Pacific\/Honolulu)/.test(
+      timeZone,
+    );
+  return format === "12h" || (format === "mixed" && nativeTwelve) ? twelve : full;
 }
 
 export function formatOffset(utcMs: number, timeZone: string): string {
@@ -202,4 +217,34 @@ export function inputToMinutes(value: string): number | null {
   const minute = Number(match[2]);
   if (hour > 23 || minute > 59) return null;
   return hour * 60 + minute;
+}
+
+/** Actual elapsed minutes in this local date, including DST changes. */
+export function dayMinutes(day: string, zone: string): number {
+  return (midnightUtc(addDays(day, 1), zone) - midnightUtc(day, zone)) / 60_000;
+}
+
+export function nextOffsetChange(
+  now: number,
+  zone: string,
+  days = 7,
+): { at: number; before: string; after: string } | null {
+  const initial = Math.round(offsetMs(now, zone) / 60_000);
+  const limit = now + days * 86_400_000;
+  let previous = now;
+  for (let instant = now + 3_600_000; instant <= limit; instant += 3_600_000) {
+    if (Math.round(offsetMs(instant, zone) / 60_000) !== initial) {
+      let low = previous;
+      let high = instant;
+      while (high - low > 60_000) {
+        const middle = Math.floor((low + high) / 2);
+        if (Math.round(offsetMs(middle, zone) / 60_000) === initial) low = middle;
+        else high = middle;
+      }
+      const at = Math.ceil(high / 60_000) * 60_000;
+      return { at, before: formatOffset(now, zone), after: formatOffset(at, zone) };
+    }
+    previous = instant;
+  }
+  return null;
 }
