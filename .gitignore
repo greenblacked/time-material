@@ -5,7 +5,6 @@ dist/
 .env.*
 screenshots/
 artifacts/
-.Time Material/
 attachments/
 *.log
 .node_modules.lock
@@ -13,8 +12,10 @@ attachments/
 # Local agent instructions, roles, skills and reports
 /.agent/
 /.agents/
-/.Time Material/
-/.Time Material/
 
 # Cloudflare local runtime state
 /.wrangler/
+
+# Local hidden directories are private; repository workflows remain tracked.
+/.*/
+!/.github/
