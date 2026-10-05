@@ -1,10 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useServerFn } from "@tanstack/react-start";
 import { useNavigate } from "@tanstack/react-router";
 import { ChevronLeft, ChevronRight, Moon, Sun } from "lucide-react";
-import { useRefetchWhenConnectorReady } from "@/lib/app-data";
-import { loadCalendarWindow } from "@/lib/schedule/calendar.functions";
-import type { ScheduleResponse } from "@/lib/schedule/types";
 import {
   BACKGROUND_KEY,
   STORAGE_KEY,
@@ -19,14 +15,13 @@ import {
   type Board,
 } from "@/lib/time/board";
 import { derive, meetingBrief, meetingIcs, googleCalendarUrl } from "@/lib/time/derive";
-import { axisMinutes, searchWindow, type Interval, type Place } from "@/lib/time/intersect";
+import { axisMinutes, type Interval, type Place } from "@/lib/time/intersect";
 import {
   addDays,
   formatDayLabel,
   partsInZone,
   dayKey,
   dayMinutes,
-  midnightUtc,
   parseDay,
 } from "@/lib/time/zoned";
 import { CityDesk } from "./city-desk";
@@ -34,7 +29,6 @@ import { Inspector } from "./inspector";
 import { Loom } from "./loom";
 import { Button, IconButton } from "./ui";
 import { BoardCalendar } from "./board-calendar";
-import { AccountsPanel } from "./accounts-panel";
 
 function readStorage(key: string): string | null {
   try {
@@ -68,19 +62,14 @@ const BACKGROUNDS: { id: Background; label: string }[] = [
 export function BoardApp() {
   const navigate = useNavigate();
   const cleanedSharedQuery = useRef(false);
-  const load = useServerFn(loadCalendarWindow);
   const [board, setBoard] = useState<Board>(() => defaultBoard(Date.now()));
   const [now, setNow] = useState<number | null>(null);
   const [detectedZone, setDetectedZone] = useState<string | null>(null);
-  const [calendar, setCalendar] = useState<{ key: string; result: ScheduleResponse } | null>(null);
   const [loadedBoard, setLoadedBoard] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const [groups, setGroups] = useState<{ name: string; places: Place[] }[]>([]);
   const [groupName, setGroupName] = useState("");
-  const calendarKey = `${board.day}|${board.places[0]?.zone}`;
-  const schedule = calendar?.key === calendarKey ? calendar.result : null;
-  const [updating, setUpdating] = useState(false);
-  const [attempt, setAttempt] = useState(0);
+  const schedule = null;
   const [copied, setCopied] = useState(false);
   const [theme, setTheme] = useState<"light" | "dark" | "system">("system");
   const [background, setBackground] = useState<Background>("quiet");
@@ -164,51 +153,6 @@ export function BoardApp() {
       resetScroll: false,
     });
   }, [loadedBoard, navigate]);
-
-  const axisZone = board?.places[0]?.zone;
-  const day = board?.day;
-
-  useEffect(() => {
-    if (!loadedBoard || !axisZone || !day) return;
-    const key = `${day}|${axisZone}`;
-    let cancelled = false;
-    const { from, to } = searchWindow(day, axisZone);
-    setUpdating(true);
-    load({
-      data: {
-        timeMin: new Date(from).toISOString(),
-        timeMax: new Date(
-          Math.max(to, midnightUtc(day, axisZone) + (dayMinutes(day, axisZone) + 1440) * 60_000),
-        ).toISOString(),
-      },
-    })
-      .then((result) => {
-        if (!cancelled) setCalendar({ key, result });
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setCalendar({
-            key,
-            result: {
-              status: "unavailable",
-              message: "The calendar could not be read.",
-              busy: [],
-              events: [],
-            },
-          });
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setUpdating(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [axisZone, day, attempt, load, loadedBoard]);
-
-  const wait = useRefetchWhenConnectorReady(schedule?.status === "pending", () => {
-    setAttempt((value) => value + 1);
-  });
 
   const view = useMemo(() => derive(board, schedule), [board, schedule]);
 
@@ -529,8 +473,6 @@ export function BoardApp() {
           <Loom
             board={board}
             view={view}
-            schedule={schedule}
-            wait={wait}
             now={now}
             onCut={(minutes) => update({ ...board, cutMinutes: minutes })}
             onRange={(cutMinutes, durationMin) => update({ ...board, cutMinutes, durationMin })}
@@ -555,12 +497,8 @@ export function BoardApp() {
         <Inspector
           board={board}
           view={view}
-          schedule={schedule}
-          updating={updating}
-          wait={wait}
           onDuration={(minutes) => update({ ...board, durationMin: minutes })}
           onFocus={focusInterval}
-          onRefresh={() => setAttempt((value) => value + 1)}
           onCopy={() => void copyBrief()}
           copied={copied}
           onDownload={downloadIcs}
@@ -579,10 +517,6 @@ export function BoardApp() {
           linkCopied={linkCopied}
           calendarUrl={googleCalendarUrl(board, view, schedule)}
         />
-        <details className="panel accounts-disclosure p-4">
-          <summary className="press cursor-pointer text-sm">Accounts and calendar sync</summary>
-          <AccountsPanel onSync={() => setAttempt((value) => value + 1)} />
-        </details>
       </div>
     </main>
   );

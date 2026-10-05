@@ -7,5 +7,5 @@
 ### Added
 
 - Timezone day board with per-city working hours and meeting overlap calculations.
-- Calendar connector readiness, busy schedules and Zoom links when available.
+- Glass date picker, shareable boards, and calendar exports.
 - Cloudflare Worker production and named stage preview delivery configuration.

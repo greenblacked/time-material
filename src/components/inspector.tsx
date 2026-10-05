@@ -1,9 +1,6 @@
-import { CalendarDays, Copy, Download, RefreshCw } from "lucide-react";
-import type { ScheduleResponse } from "@/lib/schedule/types";
-import { redirectToLoginIfRequired } from "@/lib/app-data";
-import type { ConnectorWaitStatus } from "@/lib/app-data";
+import { Copy, Download } from "lucide-react";
 import type { Board } from "@/lib/time/board";
-import { safeZoomHref, zoomLabel, type Derived } from "@/lib/time/derive";
+import { type Derived } from "@/lib/time/derive";
 import type { Interval } from "@/lib/time/intersect";
 import { formatHm, formatLength, dayMinutes, todayInZone } from "@/lib/time/zoned";
 import { Button } from "./ui";
@@ -11,12 +8,8 @@ import { Button } from "./ui";
 type InspectorProps = {
   board: Board;
   view: Derived;
-  schedule: ScheduleResponse | null;
-  updating: boolean;
-  wait: ConnectorWaitStatus;
   onDuration: (minutes: number) => void;
   onFocus: (interval: Interval) => void;
-  onRefresh: () => void;
   onCopy: () => void;
   copied: boolean;
   onDownload: () => void;
@@ -28,27 +21,11 @@ type InspectorProps = {
 
 const DURATIONS = [30, 45, 60, 90] as const;
 
-function calendarSentence(schedule: ScheduleResponse | null, wait: ConnectorWaitStatus): string {
-  if (!schedule) return "Reading the calendar…";
-  if (schedule.status === "pending" && wait === "not_embedded") {
-    return "Google Calendar is unread in this view. Open Time Material from Time Material to lay events and Zoom calls on the day. The hours still compare.";
-  }
-  if (schedule.status === "pending" && wait === "timed_out") {
-    return "The calendar did not connect. The hours still compare.";
-  }
-  if (schedule.status === "pending") return "Connecting to your calendar…";
-  return schedule.message;
-}
-
 export function Inspector({
   board,
   view,
-  schedule,
-  updating,
-  wait,
   onDuration,
   onFocus,
-  onRefresh,
   onCopy,
   copied,
   onDownload,
@@ -100,11 +77,6 @@ export function Inspector({
         ))}
       </ul>
 
-      <p className="text-xs text-mute">
-        {schedule?.status === "ok"
-          ? schedule.message
-          : "Calendar unread. Working hours still compare."}
-      </p>
       <details>
         <summary className="cursor-pointer text-sm">Meeting details</summary>
         <div className="glass-menu mt-3 grid gap-4 p-3 lg:grid-cols-2">
@@ -182,85 +154,8 @@ export function Inspector({
               </span>
             )}
           </p>
-          <p className="text-xs text-mute">{calendarSentence(schedule, wait)}</p>
           <details>
-            <summary className="cursor-pointer text-sm">Calendar details and shared hours</summary>
-            <div className="glass-menu mt-3 flex flex-col gap-2 p-3">
-              <div className="flex items-center justify-between gap-2">
-                <h3 className="text-sm font-medium">Calendar and Zoom</h3>
-                <Button
-                  variant="ghost"
-                  onClick={onRefresh}
-                  disabled={updating}
-                  className="h-11 px-2"
-                >
-                  <RefreshCw aria-hidden className="size-4" />
-                  Refresh
-                </Button>
-              </div>
-              <p className="text-sm text-mute">{calendarSentence(schedule, wait)}</p>
-              {schedule?.status === "login" && schedule.loginUrl ? (
-                <Button
-                  variant="solid"
-                  onClick={() =>
-                    redirectToLoginIfRequired({
-                      ok: false,
-                      data: null,
-                      loginRequired: true,
-                      loginUrl: schedule.loginUrl,
-                    })
-                  }
-                >
-                  Continue with Time Material
-                </Button>
-              ) : null}
-              {schedule?.status === "ok" && view.eventHits.length > 0 ? (
-                <ul className="flex flex-col gap-2 text-sm">
-                  {view.eventHits.map((event) => {
-                    const href = event.isZoom ? safeZoomHref(event.zoomUrl) : null;
-                    return (
-                      <li key={event.id} className="flex items-start justify-between gap-3">
-                        <span>
-                          <CalendarDays aria-hidden className="mr-1 inline size-4" />
-                          {event.title}
-                        </span>
-                        {href ? (
-                          <a
-                            className="shrink-0 text-ink underline"
-                            href={href}
-                            target="_blank"
-                            rel="noreferrer"
-                          >
-                            {zoomLabel(href)}
-                          </a>
-                        ) : event.isZoom ? (
-                          <span className="text-mute">Zoom</span>
-                        ) : null}
-                      </li>
-                    );
-                  })}
-                </ul>
-              ) : null}
-              {schedule?.status === "ok" && view.zoomHits.length > 0 ? (
-                <p className="text-sm">
-                  <span className="font-medium text-warn">Zoom</span> already sits in this cut.
-                </p>
-              ) : null}
-              {schedule?.status === "ok" &&
-              view.busyHits.length > 0 &&
-              view.eventHits.length === 0 ? (
-                <p className="text-sm">
-                  <span className="font-medium text-warn">Busy</span>
-                  <span className="text-mute">, without a visible title.</span>
-                </p>
-              ) : null}
-              {view.allDay.length > 0 ? (
-                <p className="text-sm text-mute">
-                  All day: {view.allDay.map((event) => event.title).join(", ")}
-                </p>
-              ) : null}
-            </div>
-
+            <summary className="cursor-pointer text-sm">Shared hours</summary>
             <div className="flex flex-col gap-2 border-t border-line pt-3">
               <h3 className="text-sm font-medium">Shared hours</h3>
               {view.fitted.length === 0 ? (
@@ -341,10 +236,6 @@ export function Inspector({
       </div>
       <p className="sr-only" aria-live="polite">
         {copied ? "Brief copied." : ""}
-      </p>
-      <p className="text-xs text-mute">
-        Zoom calls are the ones the calendar event already points at. A title that merely says zoom
-        is not enough.
       </p>
     </section>
   );

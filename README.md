@@ -1,102 +1,44 @@
 # Time Material
 
-Compare local times across cities and timezones, find overlapping working hours,
-and select a meeting on a shared timeline. The interface supports desktop and
-mobile, a white theme with blue accents, a dark theme with yellow accents, and
-frosted glass controls.
+A timezone planner for comparing cities and finding shared working hours.
 
-## Start using the board
+## Features
 
-1. Use **Add city or timezone** in the table header to add locations.
-2. Choose a date and **Workday** or **Full day**.
-3. Click or drag across the timeline to select a meeting. Move the selection or
-   resize either edge. Hold Shift for five-minute steps; keyboard controls are
-   available on the selection and resize handles.
-4. Copy a shareable link or meeting brief, download a calendar file, or open a
-   Google Calendar event template. An event template does not send invitations.
+- Add cities or IANA time zones and reorder the reference city.
+- Compare local dates and times, including daylight-saving changes.
+- Select a meeting interval and adjust working hours.
+- Use light or dark glass controls and a custom date picker.
+- Share a board, copy meeting details, download an ICS file, or open a Google Calendar event draft.
 
-The first location is **Home** and defines the displayed day's axis. Its menu
-can change the home location, reorder, rename or remove cities, and edit working
-hours. Changing Home preserves the selected meeting's instant.
+Account login and calendar synchronization are not included. The app requires no database or OAuth credentials. Calendar exports do not connect to your account or read events.
 
-**Outside work hours** means the selected meeting is outside that location's
-configured hours. The defaults are 09:00–17:00, with weekday filtering enabled;
-these are editable application settings, not a calendar recommendation.
-Daylight-saving transitions and local date rollovers are handled by timezone.
+## Development
 
-**Options** contains time formats, timezone and weekend display, backgrounds and
-saved location groups. The theme switch is at the toolbar's right edge. Groups
-and preferences are stored in this browser, not synchronized across devices.
-The address bar stays clean while you edit. **Copy link** generates a detailed
-URL containing the current board settings. Opening that link restores the board,
-then removes its settings from the address bar.
-
-## Integration status
-
-Time comparison and calendar exports work without an account. Reading private
-calendar events currently uses the inherited Time Material connector implementation.
-Direct Google, Microsoft/Teams and Zoom authorization is requested but not yet
-implemented. Cloudflare deployment secrets do not grant provider access.
-
-Missing calendar data is shown as unread. Partial reads and pagination remain
-release blockers: exported availability and Zoom claims are not yet reliable
-when only part of a calendar response is available.
-
-## Local development in Docker
-
-Requires Docker. Run from the repository root. This stages source without local
-credentials or generated files, then installs dependencies inside the container:
+Use Node.js 22 or 24. Run application checks in Docker.
 
 ```sh
-task_src=$(mktemp -d)
-trap 'rm -rf -- "$task_src"' EXIT
-tar --exclude='.git' --exclude='.agent' --exclude='.agents' \
-  --exclude='.Time Material' --exclude='.Time Material' --exclude='.Time Material' \
-  --exclude='.aws' --exclude='.ssh' --exclude='.npmrc' \
-  --exclude='.env' --exclude='.env.*' --exclude='node_modules' \
-  --exclude='dist' --exclude='.output' --exclude='.nitro' \
-  --exclude='.wrangler' --exclude='.pglite' --exclude='.vercel' \
-  --exclude='artifacts' --exclude='screenshots' --exclude='*.log' \
-  -cf - . | tar -C "$task_src" -xf -
-docker run --rm --init -p 127.0.0.1:8080:8080 \
-  --mount "type=bind,source=$task_src,target=/source,readonly" \
-  --workdir /workspace node:22-bookworm-slim \
-  sh -ec 'cp -a /source/. /workspace/; npm ci; exec npm run dev'
+npm ci
+npm run dev
 ```
 
-Open http://localhost:8080. This runs a snapshot; restart with a fresh snapshot
-to include source edits. Run installs, tests and builds inside Docker.
+The development server listens on port 8080.
 
-## Checks and release status
+```sh
+npm test
+npm run lint
+npm run typecheck
+npm run build
+npm run build:cloudflare
+npm run deploy:cloudflare:dry-run
+```
 
-The package provides `lint`, `typecheck`, `test:ci`, `test`, `check:auth` and
-`build`. `check:auth` needs a running development server. The Node `build` also
-runs migrations when `DATABASE_URL` is supplied; Cloudflare builds do not.
+Browser checks use Playwright with Chromium and WebKit across desktop, phone, and tablet layouts in both themes. Browser emulation does not establish compatibility with every physical device.
 
-Curated tests and local browser/runtime checks have passed. The full test suite
-has 16 independently reproduced baseline fixture/configuration failures, and
-the retained Nitro dependency chain has high-severity audit findings. CI still
-needs the requested broader browser, Node-version and security coverage.
-The application is not yet certified ready for production.
+## Delivery
 
-## Cloudflare deployment
+Work follows `dev` → `stage` → `main`. The required check is `CI`. Stage deploys a named preview of the same Cloudflare Worker. Production deploys from a published tagged release.
 
-Wrangler publishes one Worker, `time-material`:
+- Production: https://time.szolotov.com
+- Stage: https://stage.time.szolotov.com
 
-| Branch  | Target                                         |
-| ------- | ---------------------------------------------- |
-| `main`  | Production: https://time.szolotov.com          |
-| `stage` | Named preview: https://stage.time.szolotov.com |
-| `dev`   | Checks only                                    |
-
-Pull requests build, smoke-test the local Worker and run a credential-free dry
-run. Publishing uses repository secrets `CLOUDFLARE_ACCOUNT_ID` and
-`CLOUDFLARE_API_TOKEN`. Stage's Cloudflare Zero Trust access policy is managed
-separately; `noindex` is not access control.
-
-See [deployment instructions](docs/cloudflare-deployment.md) for configuration,
-checks, database requirements and rollback. Local checks do not prove a live
-deployment or provider integration.
-
-Changes follow `dev` → `stage` → `main`. See
-[contribution and merge rules](CONTRIBUTING.md).
+See [contribution guidelines](CONTRIBUTING.md), [deployment](docs/cloudflare-deployment.md), and [releases](docs/release.md).

@@ -1,6 +1,5 @@
 const title = process.env.TITLE ?? "";
-const conventional =
-  /^(feat|fix|docs|ci|chore|refactor|test|perf|build)(\([a-z0-9._/-]+\))?: .+$/;
+const conventional = /^(feat|fix|docs|ci|chore|refactor|test|perf|build)(\([a-z0-9._/-]+\))?: .+$/;
 const release = /^release: v\d+\.\d+\.\d+$/;
 
 if (title.length <= 72 && (conventional.test(title) || release.test(title))) {

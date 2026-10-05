@@ -1,6 +1,4 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import type { ConnectorWaitStatus } from "@/lib/app-data";
-import type { ScheduleResponse } from "@/lib/schedule/types";
 import { selectionRange, resizeSelection, snapMinutes, type Board } from "@/lib/time/board";
 import { cityByZone } from "@/lib/time/cities";
 import type { Derived } from "@/lib/time/derive";
@@ -20,8 +18,6 @@ import {
 type LoomProps = {
   board: Board;
   view: Derived;
-  schedule: ScheduleResponse | null;
-  wait: ConnectorWaitStatus;
   now: number | null;
   onCut: (minutes: number) => void;
   onRange: (cutMinutes: number, durationMin: number) => void;
@@ -31,34 +27,8 @@ type LoomProps = {
 
 const HEAD = "h-16";
 const ROW = "h-24 sm:h-20";
-const RIBBON = "h-12";
-
-function ribbonNote(schedule: ScheduleResponse | null, wait: ConnectorWaitStatus): string | null {
-  if (!schedule) return "Reading…";
-  if (schedule.status === "ok") return null;
-  if (schedule.status === "pending" && (wait === "waiting" || wait === "idle")) return "Reading…";
-  return "No data";
-}
-
 function percent(minute: number, start: number, end: number): number {
   return ((minute - start) / (end - start)) * 100;
-}
-
-function spanStyle(
-  startUtc: number,
-  endUtc: number,
-  zone: string,
-  day: string,
-  viewStart: number,
-  viewEnd: number,
-): { left: string; width: string } | null {
-  if (!Number.isFinite(startUtc) || !Number.isFinite(endUtc) || endUtc <= startUtc) return null;
-  return bandStyle(
-    axisMinutes(startUtc, zone, day),
-    axisMinutes(endUtc, zone, day),
-    viewStart,
-    viewEnd,
-  );
 }
 
 function bandStyle(
@@ -75,17 +45,7 @@ function bandStyle(
   return { left: `${left}%`, width: `${width}%` };
 }
 
-export function Loom({
-  board,
-  view,
-  schedule,
-  wait,
-  now,
-  onCut,
-  onRange,
-  onPlaces,
-  cityChooser,
-}: LoomProps) {
+export function Loom({ board, view, now, onCut, onRange, onPlaces, cityChooser }: LoomProps) {
   const trackRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
   const drag = useRef<{
@@ -102,7 +62,6 @@ export function Loom({
   const columns = {
     gridTemplateColumns: `repeat(${view.hours.length}, minmax(0, 1fr))`,
   };
-  const unread = ribbonNote(schedule, wait);
 
   const pointerMinute = (clientX: number) => {
     const rect = trackRef.current?.getBoundingClientRect();
@@ -358,10 +317,6 @@ export function Loom({
                 </details>
               </div>
             ))}
-            <div className={`${RIBBON} flex items-center border-b border-line px-3 text-sm`}>
-              Calendar
-            </div>
-            <div className={`${RIBBON} flex items-center px-3 text-sm`}>Zoom</div>
           </div>
           <div ref={viewportRef} className="min-w-0 flex-1 overflow-x-auto">
             <div
@@ -474,95 +429,6 @@ export function Loom({
                   );
                 })}
               </div>
-              <Ribbon
-                empty={
-                  unread ??
-                  (schedule?.busyComplete === true && schedule.eventsComplete === true
-                    ? "Nothing scheduled in view."
-                    : "Calendar coverage incomplete.")
-                }
-                showEmpty={
-                  unread !== null ||
-                  (view.timedEvents.filter((event) => !event.isZoom).length === 0 &&
-                    (schedule?.busy.length ?? 0) === 0)
-                }
-              >
-                {schedule?.status === "ok"
-                  ? schedule.busy.map((span) => {
-                      const style = spanStyle(
-                        Date.parse(span.start),
-                        Date.parse(span.end),
-                        view.axis.zone,
-                        board.day,
-                        view.viewStartMin,
-                        view.viewEndMin,
-                      );
-                      if (!style) return null;
-                      return (
-                        <div
-                          key={`${span.start}-${span.end}`}
-                          className="busy-fill absolute inset-y-1"
-                          style={style}
-                        />
-                      );
-                    })
-                  : null}
-                {view.timedEvents
-                  .filter((event) => !event.isZoom)
-                  .map((event) => {
-                    const style = spanStyle(
-                      Date.parse(event.start),
-                      Date.parse(event.end),
-                      view.axis.zone,
-                      board.day,
-                      view.viewStartMin,
-                      view.viewEndMin,
-                    );
-                    if (!style) return null;
-                    return (
-                      <div
-                        key={event.id}
-                        className="event-fill absolute inset-y-1 overflow-hidden px-1 text-xs"
-                        style={style}
-                        title={event.title}
-                      >
-                        <span className="truncate">{event.title}</span>
-                      </div>
-                    );
-                  })}
-              </Ribbon>
-              <Ribbon
-                empty={
-                  unread ??
-                  (schedule?.eventsComplete === true
-                    ? "No Zoom calls in view."
-                    : "Zoom coverage incomplete.")
-                }
-                showEmpty={unread !== null || view.zoomInView.length === 0}
-                last
-              >
-                {view.zoomInView.map((event) => {
-                  const style = spanStyle(
-                    Date.parse(event.start),
-                    Date.parse(event.end),
-                    view.axis.zone,
-                    board.day,
-                    view.viewStartMin,
-                    view.viewEndMin,
-                  );
-                  if (!style) return null;
-                  return (
-                    <div
-                      key={event.id}
-                      className="zoom-fill absolute inset-y-1 overflow-hidden px-1 text-xs"
-                      style={style}
-                      title={event.title}
-                    >
-                      <span className="truncate">{event.title}</span>
-                    </div>
-                  );
-                })}
-              </Ribbon>
               {nowVisible ? (
                 <div
                   className="now-line pointer-events-none absolute bottom-0 top-8 z-20"
@@ -671,14 +537,6 @@ export function Loom({
           <span className="swatch shared-swatch" aria-hidden />
           Shared
         </span>
-        <span className="inline-flex items-center gap-2">
-          <span className="swatch busy-swatch" aria-hidden />
-          Calendar busy
-        </span>
-        <span className="inline-flex items-center gap-2">
-          <span className="swatch zoom-swatch" aria-hidden />
-          Zoom
-        </span>
         {hoverUtc !== null ? (
           <span className="text-ink tabular-nums">
             Pointer ·{" "}
@@ -689,26 +547,5 @@ export function Loom({
         ) : null}
       </div>
     </section>
-  );
-}
-
-function Ribbon({
-  empty,
-  showEmpty,
-  last,
-  children,
-}: {
-  empty: string;
-  showEmpty: boolean;
-  last?: boolean;
-  children: ReactNode;
-}) {
-  return (
-    <div className={`${RIBBON} relative border-line ${last ? "" : "border-b"}`}>
-      {children}
-      {showEmpty ? (
-        <p className="flex h-full items-center px-3 text-sm text-mute">{empty}</p>
-      ) : null}
-    </div>
   );
 }

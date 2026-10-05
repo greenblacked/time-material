@@ -20,17 +20,17 @@ const SCRIPT = join(TEMPLATE_ROOT, "scripts/write-atomic.mjs");
 function makeWorkspace() {
   const root = mkdtempSync(join(tmpdir(), "write-atomic-"));
   mkdirSync(join(root, "public"), { recursive: true });
-  mkdirSync(join(root, ".Time Material"), { recursive: true });
+  mkdirSync(join(root, ".agent"), { recursive: true });
   return root;
 }
 
 test("parseWriteAtomicArgs needs exactly a staged file and a target", () => {
-  assert.deepEqual(parseWriteAtomicArgs([".Time Material/og.tmp", "public/og.jpg"]), {
-    staged: ".Time Material/og.tmp",
+  assert.deepEqual(parseWriteAtomicArgs([".agent/og.tmp", "public/og.jpg"]), {
+    staged: ".agent/og.tmp",
     target: "public/og.jpg",
   });
   assert.match(parseWriteAtomicArgs([]).error, /usage:/);
-  assert.match(parseWriteAtomicArgs([".Time Material/og.tmp"]).error, /usage:/);
+  assert.match(parseWriteAtomicArgs([".agent/og.tmp"]).error, /usage:/);
   assert.match(parseWriteAtomicArgs(["a", "b", "c"]).error, /unexpected argument: c/);
 });
 
@@ -38,7 +38,7 @@ test("stagingError refuses a temp inside public/ and a no-op move", () => {
   const publicDir = "/workspace/public";
   assert.equal(
     stagingError({
-      staged: "/workspace/.Time Material/og.jpg.tmp",
+      staged: "/workspace/.agent/og.jpg.tmp",
       target: "/workspace/public/og.jpg",
       publicDir,
     }),
@@ -64,7 +64,7 @@ test("stagingError refuses a temp inside public/ and a no-op move", () => {
 
 test("handOver replaces the target and clears the staged file", () => {
   const root = makeWorkspace();
-  const staged = join(root, ".Time Material/og.jpg.tmp");
+  const staged = join(root, ".agent/og.jpg.tmp");
   const target = join(root, "public/og.jpg");
   writeFileSync(target, "old card");
   writeFileSync(staged, "new card");
@@ -77,7 +77,7 @@ test("handOver replaces the target and clears the staged file", () => {
 
 test("handOver creates a missing target directory", () => {
   const root = makeWorkspace();
-  const staged = join(root, ".Time Material/site.json.tmp");
+  const staged = join(root, ".agent/site.json.tmp");
   writeFileSync(staged, '{"title":"Sky Strike"}');
 
   handOver(staged, join(root, "src/lib/og/site.json"));
@@ -90,24 +90,24 @@ test("an interrupted pass leaves the target on its old bytes, temp-free", () => 
   const target = join(root, "public/og.jpg");
   writeFileSync(target, "old card");
   // The staged file a killed ffmpeg leaves behind: never handed over.
-  writeFileSync(join(root, ".Time Material/og.jpg.tmp"), "half a JPEG");
+  writeFileSync(join(root, ".agent/og.jpg.tmp"), "half a JPEG");
 
   assert.equal(readFileSync(target, "utf8"), "old card");
-  assert.throws(() => handOver(join(root, ".Time Material/absent.tmp"), target), { code: "ENOENT" });
+  assert.throws(() => handOver(join(root, ".agent/absent.tmp"), target), { code: "ENOENT" });
   assert.equal(readFileSync(target, "utf8"), "old card");
   assert.equal(existsSync(`${target}.tmp-${process.pid}`), false);
 });
 
 test("a failed hand-over creates no directory for the target it never wrote", () => {
   const root = makeWorkspace();
-  const missing = join(root, ".Time Material/absent.tmp");
+  const missing = join(root, ".agent/absent.tmp");
   assert.throws(() => handOver(missing, join(root, "src/lib/og/site.json")), { code: "ENOENT" });
   assert.equal(existsSync(join(root, "src")), false);
 });
 
 test("a staged file on another filesystem is refused, not copied", () => {
   const root = makeWorkspace();
-  const staged = join(root, ".Time Material/og.jpg.tmp");
+  const staged = join(root, ".agent/og.jpg.tmp");
   const target = join(root, "public/og.jpg");
   writeFileSync(staged, "new card");
   writeFileSync(target, "old card");
@@ -116,7 +116,7 @@ test("a staged file on another filesystem is refused, not copied", () => {
   };
 
   assert.throws(() => handOver(staged, target, { rename: crossDevice }), {
-    message: /stage under \/workspace\/\.Time Material\//,
+    message: /stage under \/workspace\/\.agent\//,
   });
   // Copying would have had to stage its own temp inside public/, which is the
   // one place stagingError refuses.
@@ -126,10 +126,10 @@ test("a staged file on another filesystem is refused, not copied", () => {
 
 test("cli: hands the file over, and refuses a temp staged in public/", () => {
   const root = makeWorkspace();
-  writeFileSync(join(root, ".Time Material/og.jpg.tmp"), "new card");
+  writeFileSync(join(root, ".agent/og.jpg.tmp"), "new card");
   const ok = spawnSync(
     process.execPath,
-    [SCRIPT, join(root, ".Time Material/og.jpg.tmp"), join(root, "public/og.jpg")],
+    [SCRIPT, join(root, ".agent/og.jpg.tmp"), join(root, "public/og.jpg")],
     { encoding: "utf8" },
   );
   assert.equal(ok.status, 0, ok.stdout + ok.stderr);
@@ -170,9 +170,9 @@ test("cli: hands over card, banner and identity using workspace-relative paths",
   const script = join(root, "scripts/write-atomic.mjs");
   writeFileSync(script, readFileSync(SCRIPT));
   const assets = [
-    [".Time Material/og.jpg.tmp", "public/og.jpg", "new card"],
-    [".Time Material/x-banner.jpg.tmp", "public/x-banner.jpg", "new banner"],
-    [".Time Material/site.json.tmp", "src/lib/og/site.json", '{"title":"New identity"}'],
+    [".agent/og.jpg.tmp", "public/og.jpg", "new card"],
+    [".agent/x-banner.jpg.tmp", "public/x-banner.jpg", "new banner"],
+    [".agent/site.json.tmp", "src/lib/og/site.json", '{"title":"New identity"}'],
   ];
   for (const [staged, target, bytes] of assets) {
     writeFileSync(join(root, staged), bytes);
@@ -191,7 +191,7 @@ test("cli: a missing staged file fails without touching the target", () => {
   writeFileSync(join(root, "public/og.jpg"), "old card");
   const run = spawnSync(
     process.execPath,
-    [SCRIPT, join(root, ".Time Material/absent.tmp"), join(root, "public/og.jpg")],
+    [SCRIPT, join(root, ".agent/absent.tmp"), join(root, "public/og.jpg")],
     { encoding: "utf8" },
   );
   assert.equal(run.status, 1);

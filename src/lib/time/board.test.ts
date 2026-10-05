@@ -138,7 +138,6 @@ test("five minute meetings include a five minute gap between busy intervals", ()
   );
 });
 
-
 test("meeting brief identifies each city's dates when a meeting crosses midnight", () => {
   const board = {
     ...defaultBoard(now),

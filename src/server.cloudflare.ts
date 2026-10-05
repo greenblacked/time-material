@@ -1,4 +1,4 @@
-import TimePwaMiddleware from "../server/middleware/Time Material-pwa";
+import timePwaMiddleware from "../server/middleware/time-pwa";
 
 /** Native Worker entry; keep the deployed PWA middleware without a Nitro runtime. */
 export default {
@@ -19,7 +19,7 @@ export default {
         },
       });
     }
-    const result = await TimePwaMiddleware(
+    const result = await timePwaMiddleware(
       { url: new URL(request.url), req: { method: request.method, headers: request.headers } },
       async () => {
         const { default: server } = await import("@tanstack/react-start/server-entry");

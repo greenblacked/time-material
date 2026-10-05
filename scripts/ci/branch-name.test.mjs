@@ -51,5 +51,5 @@ for (const [head, base, fork] of [
 test("without routing context validates names only", () => {
   assert.equal(run("dev").status, 0);
   assert.equal(run("docs/review-guide").status, 0);
-  assert.equal(run("Time Material/task").status, 1);
+  assert.equal(run("unsupported/task").status, 1);
 });

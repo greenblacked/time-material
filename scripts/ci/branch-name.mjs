@@ -8,11 +8,11 @@ const named =
 const dependency = /^dependabot\/[a-z0-9][a-z0-9._/-]*$/;
 const validName = longLived.test(head) || named.test(head) || dependency.test(head);
 const hasContext = base !== undefined;
-const validRoute = !hasContext || (
+const validRoute =
+  !hasContext ||
   ((named.test(head) || dependency.test(head)) && base === "dev") ||
   (!fromFork && head === "dev" && base === "stage") ||
-  (!fromFork && head === "stage" && base === "main")
-);
+  (!fromFork && head === "stage" && base === "main");
 
 if (validName && validRoute) {
   console.log(`${head} is an allowed branch${hasContext ? ` into ${base}` : " name"}.`);
@@ -21,6 +21,6 @@ if (validName && validRoute) {
 
 console.error(
   `Branch "${head}"${hasContext ? ` into "${base}"` : ""} is not allowed. ` +
-  "Use <type>/<short-kebab> or dependabot/* into dev, then same-repository dev into stage and stage into main.",
+    "Use <type>/<short-kebab> or dependabot/* into dev, then same-repository dev into stage and stage into main.",
 );
 process.exit(1);

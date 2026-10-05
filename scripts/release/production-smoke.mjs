@@ -36,7 +36,7 @@ assert.match(html, /Time Material/);
 const asset = html.match(/src="(\/assets\/[^"]+\.js)"/);
 assert.ok(asset?.[1].startsWith("/assets/"));
 assert.equal((await get(asset[1])).status, 200);
-const manifest = await get("/__Time/manifest.webmanifest");
+const manifest = await get("/pwa/manifest.webmanifest");
 assert.equal(manifest.status, 200);
 assert.equal(manifest.headers.get("x-worker-version"), expected);
 assert.ok((await manifest.json()).name);
