@@ -153,6 +153,9 @@ export default defineConfig(({ command, isPreview }) => ({
     // The preview proxy forwards its own host name. Without this, Vite
     // answers 403 and the pane stays blank.
     allowedHosts: true,
+    headers: {
+      "Cache-Control": "no-store",
+    },
   },
   preview: {
     host: "127.0.0.1",

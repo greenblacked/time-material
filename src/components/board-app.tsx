@@ -24,6 +24,22 @@ import { Inspector } from "./inspector";
 import { Loom } from "./loom";
 import { Button, IconButton } from "./ui";
 
+function readStorage(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function writeStorage(key: string, value: string) {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // Some preview panes block storage. The day still works for this visit.
+  }
+}
+
 function dayFromInstant(utcMs: number, zone: string): string {
   const parts = partsInZone(utcMs, zone);
   return dayKey(parts.year, parts.month, parts.day);
@@ -63,12 +79,12 @@ export function BoardApp() {
   const [background, setBackground] = useState<Background>("quiet");
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem(THEME_KEY);
+    const savedTheme = readStorage(THEME_KEY);
     if (savedTheme === "light" || savedTheme === "dark") {
       document.documentElement.setAttribute("data-theme", savedTheme);
       setTheme(savedTheme);
     }
-    const savedBackground = localStorage.getItem(BACKGROUND_KEY);
+    const savedBackground = readStorage(BACKGROUND_KEY);
     if (savedBackground === "glass" || savedBackground === "full" || savedBackground === "quiet") {
       document.documentElement.setAttribute("data-background", savedBackground);
       setBackground(savedBackground);
@@ -76,14 +92,14 @@ export function BoardApp() {
     const stamp = Date.now();
     setNow(stamp);
     setDetectedZone(Intl.DateTimeFormat().resolvedOptions().timeZone || null);
-    setBoard(loadBoard(stamp, window.location.search, localStorage.getItem(STORAGE_KEY)));
+    setBoard(loadBoard(stamp, window.location.search, readStorage(STORAGE_KEY)));
     const timer = window.setInterval(() => setNow(Date.now()), 30_000);
     return () => window.clearInterval(timer);
   }, []);
 
   useEffect(() => {
     if (!board) return;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(board));
+    writeStorage(STORAGE_KEY, JSON.stringify(board));
     const query = boardToQuery(board);
     if (window.location.search.slice(1) !== query) {
       window.history.replaceState(null, "", `?${query}`);
@@ -168,13 +184,13 @@ export function BoardApp() {
         : theme;
     const next = current === "dark" ? "light" : "dark";
     document.documentElement.setAttribute("data-theme", next);
-    localStorage.setItem(THEME_KEY, next);
+    writeStorage(THEME_KEY, next);
     setTheme(next);
   };
 
   const setPaper = (next: Background) => {
     document.documentElement.setAttribute("data-background", next);
-    localStorage.setItem(BACKGROUND_KEY, next);
+    writeStorage(BACKGROUND_KEY, next);
     setBackground(next);
   };
 
