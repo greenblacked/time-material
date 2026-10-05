@@ -150,6 +150,9 @@ export default defineConfig(({ command, isPreview }) => ({
     host: "0.0.0.0",
     port: 8080,
     strictPort: true,
+    // The preview proxy forwards its own host name. Without this, Vite
+    // answers 403 and the pane stays blank.
+    allowedHosts: true,
   },
   preview: {
     host: "127.0.0.1",
