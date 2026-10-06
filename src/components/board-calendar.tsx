@@ -68,7 +68,7 @@ export function BoardCalendar({
               className="board-calendar-trigger"
               aria-label="Open calendar"
             >
-              <CalendarDays size={17} aria-hidden="true" />
+              <CalendarDays size={16} aria-hidden="true" />
             </button>
           </Popover.Trigger>
         </div>
@@ -77,8 +77,8 @@ export function BoardCalendar({
         <Popover.Content
           className="board-calendar-popover"
           aria-label="Choose date"
-          align="center"
-          sideOffset={12}
+          align="start"
+          sideOffset={8}
           collisionPadding={12}
           onOpenAutoFocus={(event) => event.preventDefault()}
           onCloseAutoFocus={(event) => {
@@ -86,7 +86,7 @@ export function BoardCalendar({
             trigger.current?.focus({ preventScroll: true });
           }}
         >
-          <div className="board-calendar-eyebrow">BOARD DATE</div>
+          <div className="board-calendar-eyebrow">Pick a date</div>
           <DayPicker
             mode="single"
             required

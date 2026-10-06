@@ -22,103 +22,130 @@
   src: url("/fonts/inter-600.woff2") format("woff2");
 }
 
+/*
+ * Design tokens. Every role is defined once with its light and dark value
+ * side by side (light-dark()), so the two themes can never drift apart.
+ * The theme follows the system unless [data-theme] pins it.
+ */
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
 
-  --color-canvas: #f5f7fb;
-  --color-surface: #ffffff;
-  --color-inset: #e8eef6;
-  --color-ink: #17202c;
-  --color-mute: #556174;
-  --color-line: #dce3ec;
-  --color-accent: #165ec9;
-  --color-accent-fg: #ffffff;
-  --color-good: #165ec9;
-  --color-warn: #8a3d36;
-  --color-mark: #e8f0ff;
+  --color-canvas: light-dark(#f7f8fa, #0f1115);
+  --color-surface: light-dark(#ffffff, #16191e);
+  --color-inset: light-dark(#f1f3f6, #1d2127);
+  --color-ink: light-dark(#1a1d23, #e8eaed);
+  --color-mute: light-dark(#5f6672, #9aa1ab);
+  --color-line: light-dark(#e3e6eb, #2a2f36);
+  --color-line-strong: light-dark(#cfd4dc, #3a4048);
+  --color-field: light-dark(#8a94a3, #6b7280);
+  --color-accent: light-dark(#165ec9, #6c9eff);
+  --color-accent-fg: light-dark(#ffffff, #0b1220);
+  --color-accent-soft: color-mix(in oklab, var(--color-accent) 12%, var(--color-surface));
+  --color-good: light-dark(#1a7f4b, #5cc98b);
+  --color-warn: light-dark(#b42318, #f2877d);
+  --color-now: light-dark(#d93025, #f28b82);
+  --color-mark: color-mix(in oklab, var(--color-accent) 18%, var(--color-surface));
 
   --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 22px;
-  --radius-bar: 24px;
-  --radius-thumb: 8px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+
+  --shadow-1: 0 1px 2px light-dark(rgb(16 24 40 / 0.06), rgb(0 0 0 / 0.3));
+  --shadow-2:
+    0 8px 24px light-dark(rgb(16 24 40 / 0.12), rgb(0 0 0 / 0.45)),
+    0 2px 4px light-dark(rgb(16 24 40 / 0.06), rgb(0 0 0 / 0.3));
 
   --text-xs: 0.75rem;
-  --text-xs--line-height: 1.4;
+  --text-xs--line-height: 1rem;
   --text-sm: 0.875rem;
-  --text-sm--line-height: 1.45;
+  --text-sm--line-height: 1.25rem;
   --text-base: 1rem;
-  --text-base--line-height: 1.5;
+  --text-base--line-height: 1.5rem;
   --text-lg: 1.125rem;
-  --text-lg--line-height: 1.4;
-  --text-xl: 1.375rem;
-  --text-xl--line-height: 1.3;
-  --text-2xl: 1.75rem;
-  --text-2xl--line-height: 1.2;
-  --text-3xl: 2.25rem;
-  --text-3xl--line-height: 1.15;
+  --text-lg--line-height: 1.5rem;
+  --text-xl: 1.25rem;
+  --text-xl--line-height: 1.75rem;
 
-  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-out: cubic-bezier(0.2, 0, 0, 1);
+}
+
+/*
+ * Browser floor for full theming: light-dark() (Chrome 123, Safari 17.5, Firefox 120).
+ * Older engines get the light palette instead of uncoloured tokens.
+ */
+@supports not (color: light-dark(#000, #fff)) {
+  :root {
+    --color-canvas: #f7f8fa;
+    --color-surface: #ffffff;
+    --color-inset: #f1f3f6;
+    --color-ink: #1a1d23;
+    --color-mute: #5f6672;
+    --color-line: #e3e6eb;
+    --color-line-strong: #cfd4dc;
+    --color-field: #8a94a3;
+    --color-accent: #165ec9;
+    --color-accent-fg: #ffffff;
+    --color-good: #1a7f4b;
+    --color-warn: #b42318;
+    --color-now: #d93025;
+    --shadow-1: 0 1px 2px rgb(16 24 40 / 0.06);
+    --shadow-2: 0 8px 24px rgb(16 24 40 / 0.12), 0 2px 4px rgb(16 24 40 / 0.06);
+    color-scheme: light;
+  }
 }
 
 @layer base {
   :root {
-    color-scheme: light;
-    --t-quick: 150ms;
-    --t-reveal: 250ms;
-    --t-draw: 400ms;
-  }
-
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) {
-      color-scheme: dark;
-      --color-canvas: #000000;
-      --color-surface: #101010;
-      --color-inset: #1c1c1c;
-      --color-ink: #f4f0e6;
-      --color-mute: #c8c0b4;
-      --color-line: #2c2c2c;
-      --color-accent: #f3cb59;
-      --color-accent-fg: #191403;
-      --color-good: #9dcfb4;
-      --color-warn: #f0b4ae;
-      --color-mark: #302816;
-    }
-  }
-
-  :root[data-theme="dark"] {
-    color-scheme: dark;
-    --color-canvas: #000000;
-    --color-surface: #101010;
-    --color-inset: #1c1c1c;
-    --color-ink: #f4f0e6;
-    --color-mute: #c8c0b4;
-    --color-line: #2c2c2c;
-    --color-accent: #f3cb59;
-    --color-accent-fg: #191403;
-    --color-good: #9dcfb4;
-    --color-warn: #f0b4ae;
-    --color-mark: #302816;
+    color-scheme: light dark;
+    --t-quick: 120ms;
+    --t-reveal: 200ms;
+    --control-h: 2.25rem;
+    --state-hover: 6%;
+    --state-pressed: 10%;
+    /* Grid fills: work hours are neutral, shared overlap and selection are accent. */
+    --band-work: var(--color-inset);
+    --band-work-rail: color-mix(in oklab, var(--color-ink) 55%, var(--color-inset));
+    --band-shared: color-mix(in oklab, var(--color-accent) 12%, transparent);
+    --band-selected: color-mix(in oklab, var(--color-accent) 16%, transparent);
   }
 
   :root[data-theme="light"] {
     color-scheme: light;
-    --color-canvas: #f5f7fb;
-    --color-surface: #ffffff;
-    --color-inset: #e8eef6;
-    --color-ink: #17202c;
-    --color-mute: #556174;
-    --color-line: #dce3ec;
-    --color-accent: #165ec9;
-    --color-accent-fg: #ffffff;
-    --color-good: #165ec9;
-    --color-warn: #8a3d36;
-    --color-mark: #e8f0ff;
+  }
+
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+  }
+
+  @media (pointer: coarse) {
+    :root {
+      --control-h: 2.75rem;
+    }
   }
 
   html {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    scroll-padding-top: 1rem;
+  }
+
+  /* Keep focused content clear of the sticky toolbar, but never scroll for the toolbar itself. */
+  @media (min-height: 700px), (min-width: 640px) and (min-height: 560px) {
+    html {
+      --bar-clear: 11rem;
+      scroll-padding-top: var(--bar-clear);
+    }
+
+    .float-bar,
+    .float-bar * {
+      scroll-margin-top: calc(var(--bar-clear) * -1);
+    }
+  }
+
+  @media (min-width: 768px) and (min-height: 560px) {
+    html {
+      --bar-clear: 6rem;
+    }
   }
 
   body {
@@ -128,63 +155,34 @@
     background: var(--color-canvas);
     color: var(--color-ink);
     font-family: var(--font-sans);
-    font-size: var(--text-base);
-    line-height: 1.5;
-  }
-
-  :root:is([data-background="glass"], [data-background="full"]) body {
-    background:
-      radial-gradient(
-        ellipse 70% 46% at 12% -8%,
-        color-mix(in oklab, var(--color-accent) 16%, transparent),
-        transparent 62%
-      ),
-      radial-gradient(
-        ellipse 54% 38% at 100% 0%,
-        color-mix(in oklab, var(--color-warn) 12%, transparent),
-        transparent 58%
-      ),
-      var(--color-canvas);
-  }
-
-  :root[data-background="full"] body::before {
-    content: "";
-    position: fixed;
-    inset: -18%;
-    z-index: 0;
-    pointer-events: none;
-    background:
-      radial-gradient(
-        circle at 22% 28%,
-        color-mix(in oklab, var(--color-accent) 20%, transparent),
-        transparent 42%
-      ),
-      radial-gradient(
-        circle at 78% 72%,
-        color-mix(in oklab, var(--color-mark) 70%, transparent),
-        transparent 46%
-      );
-    opacity: 0.85;
-    animation: aurora 48s linear infinite alternate;
-  }
-
-  @keyframes aurora {
-    from {
-      transform: translate3d(-2%, -1%, 0);
-    }
-    to {
-      transform: translate3d(2%, 1.5%, 0);
-    }
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
   }
 
   button:not(:disabled),
-  [role="button"]:not(:disabled) {
+  [role="button"]:not(:disabled),
+  summary {
     cursor: pointer;
   }
 
   :focus-visible {
     outline: 2px solid var(--color-accent);
     outline-offset: 2px;
+  }
+
+  input[type="checkbox"] {
+    width: 1.125rem;
+    height: 1.125rem;
+    margin: 0;
+    accent-color: var(--color-accent);
+  }
+
+  summary {
+    list-style: none;
+  }
+
+  summary::-webkit-details-marker {
+    display: none;
   }
 
   h1,
@@ -199,6 +197,7 @@
 }
 
 @layer components {
+  /* Surfaces */
   .panel {
     position: relative;
     z-index: 1;
@@ -209,35 +208,224 @@
   }
 
   .float-bar {
-    position: sticky;
-    top: 0.75rem;
+    position: relative;
     z-index: 30;
-    background: color-mix(in oklab, var(--color-surface) 88%, transparent);
+    background: var(--color-surface);
     color: var(--color-ink);
     border: 1px solid var(--color-line);
-    border-radius: var(--radius-bar);
-    backdrop-filter: blur(16px);
+    border-radius: var(--radius-lg);
   }
 
-  :root:is([data-background="glass"], [data-background="full"]) .panel {
-    background: color-mix(in oklab, var(--color-surface) 78%, transparent);
-    backdrop-filter: blur(18px);
+  /* The compact toolbar sticks only where it stays under a quarter of the viewport. */
+  @media (min-height: 700px), (min-width: 640px) and (min-height: 560px) {
+    .float-bar {
+      position: sticky;
+      top: 0.75rem;
+      /* A canvas-coloured collar fills the gap above the stuck bar and a strip below it,
+         so content scrolling underneath disappears cleanly instead of peeking out. */
+      box-shadow:
+        var(--shadow-1),
+        0 0 0 0.75rem var(--color-canvas);
+    }
   }
 
-  .press {
+  .menu,
+  .glass-menu {
+    background: var(--color-surface);
+    color: var(--color-ink);
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-2);
+  }
+
+  .divider {
+    height: 1px;
+    margin-block: 0.25rem;
+    background: var(--color-line);
+  }
+
+  /* Controls: one base, a few variants, states derived from the content colour. */
+  .btn,
+  .icon-btn {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    height: var(--control-h);
+    border: 1px solid transparent;
+    border-radius: var(--radius-md);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    line-height: 1;
+    white-space: nowrap;
+    text-decoration: none;
     transition:
-      opacity var(--t-quick) var(--ease-out),
-      transform var(--t-quick) var(--ease-out);
+      background-color var(--t-quick) var(--ease-out),
+      border-color var(--t-quick) var(--ease-out),
+      color var(--t-quick) var(--ease-out);
   }
 
-  .press:active {
-    transform: scale(0.98);
+  .btn {
+    padding-inline: 0.75rem;
   }
 
-  .is-on {
+  .icon-btn {
+    width: var(--control-h);
+    padding: 0;
+  }
+
+  .btn:disabled,
+  .icon-btn:disabled {
+    opacity: 0.45;
+    pointer-events: none;
+  }
+
+  .btn-quiet {
+    background: var(--color-surface);
+    border-color: var(--color-line-strong);
+    color: var(--color-ink);
+  }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--color-ink);
+  }
+
+  .btn-quiet:hover,
+  .btn-ghost:hover {
+    background: color-mix(in oklab, var(--color-ink) var(--state-hover), var(--color-surface));
+  }
+
+  .btn-quiet:active,
+  .btn-ghost:active {
+    background: color-mix(in oklab, var(--color-ink) var(--state-pressed), var(--color-surface));
+  }
+
+  .btn-primary {
+    background: var(--color-accent);
+    color: var(--color-accent-fg);
+  }
+
+  .btn-primary:hover {
+    background: color-mix(
+      in oklab,
+      var(--color-accent-fg) calc(var(--state-hover) + 4%),
+      var(--color-accent)
+    );
+  }
+
+  .btn-primary:active {
+    background: color-mix(
+      in oklab,
+      var(--color-accent-fg) calc(var(--state-pressed) + 4%),
+      var(--color-accent)
+    );
+  }
+
+  /* One selected look for every pressed, checked or current item. */
+  .seg-item:is([aria-pressed="true"], [aria-checked="true"], [aria-current="date"]),
+  .menu-item[aria-checked="true"] {
+    background: var(--color-accent-soft);
+    color: var(--color-accent);
+    font-weight: 500;
+  }
+
+  .seg {
+    display: inline-flex;
+    gap: 2px;
+    padding: 2px;
+    border-radius: var(--radius-md);
     background: var(--color-inset);
+  }
+
+  .seg-item {
+    display: inline-flex;
+    flex: 1 1 0;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    height: calc(var(--control-h) - 4px);
+    padding-inline: 0.75rem;
+    border-radius: var(--radius-sm);
+    color: var(--color-mute);
+    font-size: var(--text-sm);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    transition:
+      background-color var(--t-quick) var(--ease-out),
+      color var(--t-quick) var(--ease-out);
+  }
+
+  .seg-item:hover:not([aria-pressed="true"], [aria-checked="true"], [aria-current="date"]) {
+    background: color-mix(in oklab, var(--color-ink) var(--state-hover), var(--color-inset));
+    color: var(--color-ink);
+  }
+
+  .menu-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    min-height: var(--control-h);
+    padding-inline: 0.75rem;
+    border-radius: var(--radius-md);
+    color: var(--color-ink);
+    font-size: var(--text-sm);
+    text-align: left;
+  }
+
+  .menu-item:hover:not(:disabled) {
+    background: color-mix(in oklab, var(--color-ink) var(--state-hover), var(--color-surface));
+  }
+
+  .menu-item:disabled {
+    opacity: 0.45;
+  }
+
+  .menu-item-danger {
+    color: var(--color-warn);
+  }
+
+  .field {
+    height: var(--control-h);
+    min-width: 0;
+    padding-inline: 0.75rem;
+    border: 1px solid var(--color-field);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+    color: var(--color-ink);
+    font-size: var(--text-sm);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .field-label {
+    display: grid;
+    gap: 0.25rem;
+    color: var(--color-mute);
+    font-size: var(--text-xs);
+    font-weight: 500;
+  }
+
+  .check {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: var(--control-h);
+  }
+
+  .status-dot {
+    width: 0.375rem;
+    height: 0.375rem;
+    flex: none;
+    border-radius: 9999px;
+    background: currentColor;
+  }
+
+  .eyebrow {
+    color: var(--color-mute);
+    font-size: var(--text-xs);
     font-weight: 600;
-    box-shadow: inset 0 -2px 0 0 var(--color-accent);
   }
 
   .skip {
@@ -249,7 +437,7 @@
     background: var(--color-surface);
     color: var(--color-ink);
     border: 1px solid var(--color-line);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-md);
     padding: 0.5rem 0.75rem;
   }
 
@@ -257,81 +445,79 @@
     transform: none;
   }
 
-  .swatch {
-    width: 0.75rem;
-    height: 0.75rem;
-    border-radius: var(--radius-thumb);
-    flex: none;
-  }
-
-  .work-swatch {
-    background: color-mix(in oklab, var(--color-accent) 18%, var(--color-surface));
-    box-shadow: inset 0 0 0 1px var(--color-line);
-  }
-
-  .shared-swatch {
-    background: color-mix(in oklab, var(--color-accent) 32%, transparent);
-    box-shadow: inset 0 0 0 1px var(--color-accent);
-  }
-
-  .busy-swatch {
-    background-color: var(--color-inset);
-    background-image: repeating-linear-gradient(
-      -45deg,
-      transparent,
-      transparent 2px,
-      color-mix(in oklab, var(--color-ink) 35%, transparent) 2px,
-      color-mix(in oklab, var(--color-ink) 35%, transparent) 3px
-    );
-  }
-
-  .zoom-swatch {
-    background: color-mix(in oklab, var(--color-accent) 28%, var(--color-surface));
-    box-shadow: inset 0 0 0 1.5px var(--color-accent);
-  }
-
+  /* Timeline */
   .cell-work {
-    background: color-mix(in oklab, var(--color-accent) 12%, transparent);
-  }
-
-  .cell-night {
-    background: color-mix(in oklab, var(--color-ink) 6%, transparent);
+    background: var(--band-work);
+    box-shadow: inset 0 -2px 0 var(--band-work-rail);
+    color: var(--color-ink);
   }
 
   .shared-band {
-    background: color-mix(in oklab, var(--color-accent) 22%, transparent);
-  }
-
-  .busy-fill {
-    background-color: color-mix(in oklab, var(--color-ink) 8%, var(--color-surface));
-    background-image: repeating-linear-gradient(
-      -45deg,
-      transparent,
-      transparent 3px,
-      color-mix(in oklab, var(--color-ink) 32%, transparent) 3px,
-      color-mix(in oklab, var(--color-ink) 32%, transparent) 4px
-    );
-  }
-
-  .zoom-fill {
-    background: color-mix(in oklab, var(--color-accent) 30%, var(--color-surface));
-    box-shadow: inset 0 0 0 1.5px var(--color-accent);
-  }
-
-  .event-fill {
-    background: color-mix(in oklab, var(--color-ink) 10%, var(--color-surface));
-    box-shadow: inset 0 0 0 1px var(--color-line);
+    background: var(--band-shared);
+    box-shadow: inset 0 2px 0 var(--color-accent);
   }
 
   .cut-block {
-    border: 1.5px solid var(--color-accent);
-    background: color-mix(in oklab, var(--color-accent) 14%, transparent);
+    border: 2px solid var(--color-accent);
+    border-radius: var(--radius-sm);
+    background: var(--band-selected);
+  }
+
+  /* The badge shows start and length when the block is wide enough, else just the length. */
+  .cut-block {
+    container-type: inline-size;
+  }
+
+  .cut-badge-full {
+    display: none;
+  }
+
+  @container (min-width: 8.5rem) {
+    .cut-badge-full {
+      display: inline;
+    }
+
+    .cut-badge-short {
+      display: none;
+    }
+  }
+
+  .cut-edge {
+    background: transparent;
     touch-action: none;
+  }
+
+  .cut-edge::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 6px;
+    height: 22px;
+    border: 1px solid var(--color-surface);
+    border-radius: 9999px;
+    background: var(--color-accent);
+    transform: translate(-50%, -50%);
+  }
+
+  .cut-edge:focus-visible {
+    outline-offset: -2px;
   }
 
   .timeline-viewport {
     max-width: 100%;
     -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    /* Settle on whole hour columns so no label is cut against the city column. */
+    scroll-snap-type: x proximity;
+  }
+
+  .hour-head {
+    scroll-snap-align: start;
+  }
+
+  .timeline-viewport[data-scrolled] {
+    mask-image: linear-gradient(to right, transparent, #000 1.75rem);
   }
 
   .timeline-track {
@@ -339,471 +525,134 @@
   }
 
   .now-line {
-    width: 1px;
-    background: var(--color-accent);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .press,
-  .press:active {
-    transition: none;
-    transform: none;
+    width: 2px;
+    margin-left: -1px;
+    background: var(--color-now);
   }
 
-  :root[data-background="full"] body::before {
-    animation: none;
-  }
-}
-
-@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
-  .float-bar,
-  :root:is([data-background="glass"], [data-background="full"]) .panel {
-    background: var(--color-surface);
-    backdrop-filter: none;
-  }
-
-  :root[data-background="full"] body::before,
-  :root:is([data-background="glass"], [data-background="full"]) body {
-    background: var(--color-canvas);
+  .now-line::before {
+    content: "";
+    position: absolute;
+    top: -3px;
+    left: 50%;
+    width: 8px;
+    height: 8px;
+    border-radius: 9999px;
+    background: var(--color-now);
+    transform: translateX(-50%);
   }
 
-  :root[data-background="full"] body::before {
+  .swatch {
+    width: 1.25rem;
+    height: 1rem;
+    flex: none;
+    border-radius: calc(var(--radius-sm) / 2);
+    border: 1px solid var(--color-line-strong);
+  }
+
+  .work-swatch {
+    background: var(--band-work);
+    box-shadow: inset 0 -2px 0 var(--band-work-rail);
+  }
+
+  .shared-swatch {
+    background: color-mix(in oklab, var(--color-accent) 12%, var(--color-surface));
+    box-shadow: inset 0 2px 0 var(--color-accent);
+  }
+
+  .selected-swatch {
+    border: 2px solid var(--color-accent);
+    background: color-mix(in oklab, var(--color-accent) 16%, var(--color-surface));
+  }
+
+  .now-swatch {
+    width: 2px;
+    height: 1rem;
+    background: var(--color-now);
+  }
+
+  /* City menu stacking: the open row paints above its neighbours and the next panel. */
+  .panel:has(.city-row-menu[open]) {
+    z-index: 40;
+  }
+
+  .city-row:has(.city-row-menu[open]) {
+    z-index: 50;
+  }
+
+  .city-row-menu[open] {
+    z-index: 60;
+  }
+
+  /* Chromium keeps boxes for closed <details> content; drop them so they cannot widen the page. */
+  details:not([open]) > :not(summary) {
     display: none;
   }
-}
 
-/* Frosted control chrome stays separate from the comparison grid. */
-#day {
-  --glass-control: color-mix(in oklab, var(--color-surface) 80%, transparent);
-  --glass-menu: color-mix(in oklab, var(--color-surface) 88%, transparent);
-  --glass-edge: color-mix(in oklab, var(--color-ink) 12%, transparent);
-  --glass-glint: color-mix(in oklab, var(--color-surface) 70%, transparent);
-  --glass-shadow:
-    0 2px 5px color-mix(in oklab, var(--color-ink) 6%, transparent),
-    inset 0 1px 0 var(--glass-glint);
-}
-
-#day :is(button:not([data-edge]), a.press, summary, select, input:not([type="checkbox"])) {
-  border: 1px solid var(--glass-edge);
-  border-radius: 14px;
-  background: var(--glass-control);
-  color: var(--color-ink);
-  box-shadow: var(--glass-shadow);
-  -webkit-backdrop-filter: blur(14px) saturate(145%);
-  backdrop-filter: blur(14px) saturate(145%);
-  transition:
-    background var(--t-quick) var(--ease-out),
-    box-shadow var(--t-quick) var(--ease-out),
-    transform var(--t-quick) var(--ease-out);
-}
-
-#day summary {
-  width: fit-content;
-  min-height: 2.75rem;
-  padding: 0.6rem 0.85rem;
-  list-style: none;
-}
-
-#day summary::-webkit-details-marker {
-  display: none;
-}
-
-#day summary::after {
-  content: "⌄";
-  display: inline-block;
-  margin-left: 0.6rem;
-  color: var(--color-mute);
-}
-
-#day details[open] > summary::after {
-  transform: rotate(180deg);
-}
-
-#day :is(button:not([data-edge]), a.press, summary):hover:not(:disabled) {
-  background: color-mix(in oklab, var(--color-surface) 95%, transparent);
-  box-shadow:
-    0 3px 9px color-mix(in oklab, var(--color-ink) 10%, transparent),
-    inset 0 1px 0 var(--glass-glint);
-}
-
-#day :is(button:not([data-edge]), a.press, summary):active:not(:disabled) {
-  background: var(--color-inset);
-  box-shadow: inset 0 1px 3px color-mix(in oklab, var(--color-ink) 12%, transparent);
-}
-
-#day :is(.is-on, [aria-pressed="true"], [aria-checked="true"], details[open] > summary) {
-  background: color-mix(in oklab, var(--color-accent) 16%, var(--color-surface));
-  border-color: color-mix(in oklab, var(--color-accent) 55%, var(--color-line));
-  color: var(--color-accent);
-  box-shadow:
-    var(--glass-shadow),
-    inset 0 -2px 0 var(--color-accent);
-}
-
-#day button.bg-ink {
-  background: var(--color-ink);
-  color: var(--color-canvas);
-}
-
-#day button.bg-ink:hover:not(:disabled) {
-  background: color-mix(in oklab, var(--color-ink) 88%, var(--color-accent));
-}
-
-#day :is(button:not([data-edge]), a.press, summary, select, input):focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 3px;
-}
-
-#day button:disabled {
-  opacity: 0.4;
-  box-shadow: none;
-}
-
-#day input[type="checkbox"] {
-  accent-color: var(--color-accent);
-}
-
-#day .glass-menu,
-#day .float-bar {
-  background: var(--glass-menu);
-  border: 1px solid var(--glass-edge);
-  border-radius: 22px;
-  box-shadow:
-    0 10px 28px color-mix(in oklab, var(--color-ink) 10%, transparent),
-    0 2px 5px color-mix(in oklab, var(--color-ink) 8%, transparent),
-    inset 0 1px 0 var(--glass-glint);
-  -webkit-backdrop-filter: blur(24px) saturate(150%);
-  backdrop-filter: blur(24px) saturate(150%);
-}
-
-#day .panel:has(.city-row-menu[open]) {
-  z-index: 40;
-}
-
-#day .city-row:has(> .city-row-menu[open]) {
-  z-index: 50;
-}
-
-#day .city-row-menu[open] {
-  z-index: 60;
-}
-
-#day .city-row-menu > summary {
-  min-height: 1.75rem;
-  padding: 0.15rem 0.55rem;
-  line-height: 1.4;
-}
-
-#day .city-row-menu > summary::after {
-  content: none;
-}
-
-#day .city-row-menu > .glass-menu {
-  max-height: min(32rem, 70vh);
-  overflow-y: auto;
-  max-width: calc(100vw - 2rem);
-}
-
-@media (max-width: 639px) {
-  #day .city-row-menu > .glass-menu {
-    left: -5rem;
-  }
-}
-
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  #day {
-    --glass-control: var(--color-surface);
-    --glass-menu: var(--color-surface);
-  }
-}
-
-@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
-  #day {
-    --glass-control: var(--color-surface);
-    --glass-menu: var(--color-surface);
-    --glass-edge: var(--color-mute);
+  .city-row-menu > .glass-menu {
+    max-height: min(32rem, 70vh);
+    overflow-y: auto;
   }
 
-  #day :is(button:not([data-edge]), a.press, summary, select, input, .glass-menu, .float-bar) {
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
+  details[open] > .menu,
+  details[open] > .glass-menu {
+    animation: menu-reveal var(--t-reveal) var(--ease-out) both;
+  }
+
+  @keyframes menu-reveal {
+    from {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  .safe-x {
+    padding-left: max(1rem, env(safe-area-inset-left));
+    padding-right: max(1rem, env(safe-area-inset-right));
+    padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
+  }
+
+  @media (min-width: 640px) {
+    .safe-x {
+      padding-left: max(1.5rem, env(safe-area-inset-left));
+      padding-right: max(1.5rem, env(safe-area-inset-right));
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .safe-x {
+      padding-left: max(2rem, env(safe-area-inset-left));
+      padding-right: max(2rem, env(safe-area-inset-right));
+    }
+  }
+
+  /* Avoid Safari's focus zoom on touch devices. */
+  @media (pointer: coarse) {
+    .field,
+    select.field {
+      font-size: 1rem;
+    }
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  #day :is(button, a.press, summary, select, input) {
-    transition: none;
-    transform: none;
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
 
-/* Material-inspired theme switch, aligned to the toolbar's trailing edge. */
-#day .theme-switch {
-  position: relative;
-  width: 3.5rem;
-  height: 2rem;
-  padding: 3px;
-  border-radius: 999px;
-  background: var(--color-inset);
-}
-#day .theme-switch[aria-checked="true"] {
-  background: var(--color-accent);
-}
-#day .theme-switch-thumb {
-  display: grid;
-  place-items: center;
-  width: 1.5rem;
-  height: 1.5rem;
-  border-radius: 50%;
-  color: var(--color-ink);
-  background: var(--color-surface);
-  box-shadow: 0 1px 4px #0003;
-  transition: transform var(--t-quick) var(--ease-out);
-}
-#day .theme-switch[aria-checked="true"] .theme-switch-thumb {
-  transform: translateX(1.5rem);
-}
-#day .city-chooser summary {
-  font-size: 0.75rem;
-  padding: 0.4rem;
-}
-#day .panel:has(.city-chooser details[open]) {
-  z-index: 40;
-}
-@media (prefers-reduced-motion: reduce) {
-  #day .theme-switch-thumb {
-    transition: none;
-  }
-}
-
-/* Quiet menu rows give the frosted container a single, clean silhouette. */
-#day .glass-menu button:not([data-edge]) {
-  border-color: transparent;
-  border-radius: 10px;
-  background: transparent;
-  box-shadow: none;
-  padding-inline: 0.65rem;
-}
-#day .glass-menu button:not([data-edge]):hover:not(:disabled) {
-  background: color-mix(in oklab, var(--color-accent) 10%, var(--color-surface));
-  box-shadow: none;
-}
-#day .glass-menu button:not([data-edge]):active:not(:disabled) {
-  background: var(--color-inset);
-}
-#day .glass-menu :is(button[aria-pressed="true"], button[aria-checked="true"], button.is-on) {
-  color: var(--color-accent);
-  background: color-mix(in oklab, var(--color-accent) 16%, var(--color-surface));
-  box-shadow: inset 0 -2px 0 var(--color-accent);
-}
-
-/* A shared glass material for the whole interface, independent of the backdrop option. */
-#day {
-  --glass-panel: color-mix(in oklab, var(--color-surface) 86%, transparent);
-  --glass-sheen: linear-gradient(
-    145deg,
-    color-mix(in oklab, var(--color-surface) 42%, transparent),
-    transparent 38%,
-    color-mix(in oklab, var(--color-accent) 3%, transparent) 100%
-  );
-  --glass-spring: cubic-bezier(0.2, 0.8, 0.25, 1.08);
-}
-
-#day .brand-clock {
-  width: clamp(48px, 5vw, 64px);
-  height: auto;
-  filter: drop-shadow(0 5px 12px color-mix(in oklab, var(--color-accent) 14%, transparent));
-}
-
-#day {
-  padding-left: max(1rem, env(safe-area-inset-left));
-  padding-right: max(1rem, env(safe-area-inset-right));
-  padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
-}
-
-@media (min-width: 640px) {
-  #day {
-    padding-left: max(1.5rem, env(safe-area-inset-left));
-    padding-right: max(1.5rem, env(safe-area-inset-right));
-  }
-}
-
-@media (min-width: 1024px) {
-  #day {
-    padding-left: max(2rem, env(safe-area-inset-left));
-    padding-right: max(2rem, env(safe-area-inset-right));
-  }
-}
-
-@media (pointer: coarse) {
-  #day :is(input, select) {
-    font-size: max(16px, 1rem);
-  }
-}
-
-#day .brand-header h1 {
-  font-size: clamp(1.6rem, 3vw, 2.25rem);
-}
-
-#day .accounts-panel {
-  display: grid;
-  gap: 16px;
-  padding-top: 20px;
-  font-size: var(--text-sm);
-}
-
-#day .accounts-panel-heading {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 20px;
-  align-items: baseline;
-}
-
-#day .accounts-panel-heading span,
-#day .accounts-panel-note,
-#day .accounts-provider > span:nth-child(2) {
-  color: var(--color-mute);
-}
-
-#day .accounts-provider-list {
-  display: grid;
-  gap: 8px;
-}
-
-#day .accounts-provider {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 16px;
-  padding: 12px;
-  border: 1px solid var(--color-line);
-  border-radius: 16px;
-  background: color-mix(in oklab, var(--color-surface) 75%, transparent);
-}
-
-#day .accounts-provider > span:first-child {
-  min-width: 100px;
-  font-weight: 500;
-}
-
-#day .accounts-provider button,
-#day .accounts-panel-actions button {
-  min-height: 44px;
-  padding: 8px 14px;
-}
-
-#day .accounts-panel-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-#day .accounts-panel-note {
-  margin: 0;
-  max-width: 70ch;
-  font-size: var(--text-xs);
-}
-
-#day .panel {
-  background-color: var(--glass-panel);
-  background-image: var(--glass-sheen);
-  border-color: var(--glass-edge);
-  box-shadow:
-    0 8px 26px color-mix(in oklab, var(--color-ink) 7%, transparent),
-    inset 0 1px 0 var(--glass-glint);
-  -webkit-backdrop-filter: blur(22px) saturate(135%);
-  backdrop-filter: blur(22px) saturate(135%);
-}
-
-#day :is(.glass-menu, .float-bar) {
-  background-color: var(--glass-menu);
-  background-image: var(--glass-sheen);
-}
-
-#day :is(button:not([data-edge]), a.press, summary, select, input:not([type="checkbox"])) {
-  background-image: linear-gradient(
-    to bottom,
-    color-mix(in oklab, var(--color-surface) 28%, transparent),
-    transparent 65%
-  );
-}
-
-#day .glass-menu button:not([data-edge]) {
-  background-image: none;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  #day :is(button:not([data-edge]):not(.theme-switch), a.press, summary):hover:not(:disabled) {
-    transform: translateY(-1px);
-  }
-
-  #day .glass-menu button:not([data-edge]):hover:not(:disabled) {
-    transform: none;
-  }
-}
-
-#day :is(button:not([data-edge]):not(.theme-switch), a.press, summary):active:not(:disabled) {
-  transform: translateY(0) scale(0.985);
-}
-
-#day details[open] > .glass-menu {
-  transform-origin: top left;
-  animation: glass-menu-reveal 220ms var(--glass-spring) both;
-}
-
-#day .city-row-menu[open] > .glass-menu {
-  transform-origin: top right;
-}
-
-@keyframes glass-menu-reveal {
-  from {
-    opacity: 0;
-    transform: translateY(-4px) scale(0.985);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  #day {
-    --glass-panel: var(--color-surface);
-    --glass-sheen: none;
-  }
-
-  #day
-    :is(.panel, .float-bar, .glass-menu, button:not([data-edge]), a.press, summary, select, input) {
-    background-image: none;
-  }
-}
-
-@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
-  #day {
-    --glass-panel: var(--color-surface);
-    --glass-sheen: none;
-    --glass-glint: transparent;
-  }
-
-  #day
-    :is(.panel, .float-bar, .glass-menu, button:not([data-edge]), a.press, summary, select, input) {
-    background-image: none;
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
-  }
-
-  #day :is(.panel, .float-bar, .glass-menu) {
-    box-shadow: none;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  #day details[open] > .glass-menu {
-    animation: none;
-  }
-
-  #day :is(button:not([data-edge]), a.press, summary):is(:hover, :active) {
-    transform: none;
+@media (prefers-contrast: more) {
+  :root {
+    --color-line: var(--color-field);
+    --color-line-strong: var(--color-mute);
   }
 }

@@ -13,7 +13,8 @@ export const Route = createRootRoute({
         name: "description",
         content: "Compare time zones across cities and export a meeting at a time that works.",
       },
-      { name: "theme-color", content: "#f5f7fb" },
+      { name: "theme-color", content: "#f7f8fa", media: "(prefers-color-scheme: light)" },
+      { name: "theme-color", content: "#0f1115", media: "(prefers-color-scheme: dark)" },
     ],
     links: [
       { rel: "icon", type: "image/png", sizes: "64x64", href: "/favicon.png" },

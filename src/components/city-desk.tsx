@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as Popover from "@radix-ui/react-popover";
+import { MapPin, Plus } from "lucide-react";
 import { isValidZone } from "@/lib/time/zoned";
 import { labelFromZone } from "@/lib/time/cities";
 import { searchWorldCities, type WorldCity } from "@/lib/time/world-cities";
@@ -80,11 +81,19 @@ export function CityDesk({ board, detectedZone, onAdd }: CityDeskProps) {
     setOffset(0);
     setOpen(false);
   };
+  const full = board.places.length >= 8;
+  const searching = query.trim().length >= 2;
   return (
     <Popover.Root open={open} onOpenChange={setOpen}>
       <Popover.Trigger asChild>
-        <button ref={triggerRef} type="button" className="press min-h-11 cursor-pointer rounded-sm px-3 py-2 text-sm">
-          Add city or timezone
+        <button
+          ref={triggerRef}
+          type="button"
+          aria-label="Add city or timezone"
+          className={`btn btn-ghost h-full w-full justify-start rounded-none rounded-tl-lg px-3 ${full ? "text-mute" : "text-accent"}`}
+        >
+          <Plus aria-hidden className="size-4" />
+          Add city
         </button>
       </Popover.Trigger>
       <Popover.Portal>
@@ -102,105 +111,120 @@ export function CityDesk({ board, detectedZone, onAdd }: CityDeskProps) {
             event.preventDefault();
             if (!interactedOutside.current) triggerRef.current?.focus({ preventScroll: true });
           }}
-          onInteractOutside={() => { interactedOutside.current = true; }}
-          className="glass-menu panel z-[60] flex h-[min(32rem,var(--radix-popover-content-available-height))] w-80 max-w-[calc(100vw-2rem)] flex-col overflow-hidden p-3 shadow-lg"
+          onInteractOutside={() => {
+            interactedOutside.current = true;
+          }}
+          className="menu z-[60] flex h-[min(32rem,var(--radix-popover-content-available-height))] w-80 max-w-[calc(100vw-2rem)] flex-col overflow-hidden p-2"
         >
-        <label className="shrink-0 text-sm">
-          Search cities or timezones
-          <input
-            ref={inputRef}
-            aria-label="Search cities or timezones"
-            value={query}
-            onChange={(event) => {
-              setQuery(event.target.value);
-              setOffset(0);
-            }}
-            className="mt-2 h-11 w-full rounded-sm border border-line bg-canvas px-2"
-          />
-        </label>
-        {detectedZone && !board.places.some((place) => place.zone === detectedZone) ? (
-          <button
-            type="button"
-            disabled={board.places.length >= 8}
-            className="press mt-2 min-h-11 shrink-0 p-2 text-left text-sm disabled:opacity-50"
-            onClick={() =>
-              select(
-                {
+          {full ? (
+            <p className="mb-2 shrink-0 rounded-md bg-inset px-3 py-2 text-sm">
+              Up to 8 cities. Remove one to add another.
+            </p>
+          ) : null}
+          <label className="field-label shrink-0 px-1 pt-1">
+            Search cities or timezones
+            <input
+              ref={inputRef}
+              aria-label="Search cities or timezones"
+              value={query}
+              onChange={(event) => {
+                setQuery(event.target.value);
+                setOffset(0);
+              }}
+              className="field mt-1 h-11 w-full"
+            />
+          </label>
+          <p aria-live="polite" className="mt-2 shrink-0 px-1 text-xs text-mute">
+            {!searching
+              ? "Type at least two letters to search cities worldwide."
+              : loading
+                ? "Searching…"
+                : `${total} ${total === 1 ? "match" : "matches"}`}
+          </p>
+          {!query.trim() &&
+          detectedZone &&
+          !board.places.some((place) => place.zone === detectedZone) ? (
+            <button
+              type="button"
+              disabled={full}
+              className="menu-item mt-1 min-h-11 shrink-0"
+              onClick={() =>
+                select({
                   zone: detectedZone,
                   label: labelFromZone(detectedZone),
                   region: "Device timezone",
-                },
-              )
-            }
-          >
-            Add this device’s zone
-          </button>
-        ) : null}
-        <p aria-live="polite" className="mt-2 shrink-0 text-xs text-mute">
-          {loading ? "Searching…" : `${total} matches`}
-          {query.trim().length < 2
-            ? " · Enter at least two letters to search worldwide cities."
-            : ""}
-        </p>
-        {error ? (
-          <p role="alert" className="text-sm">
-            City search unavailable.{" "}
-            <button
-              type="button"
-              className="press min-h-11 px-2"
-              onClick={() => setRetry((value) => value + 1)}
+                })
+              }
             >
-              Retry
+              <MapPin aria-hidden className="size-4 shrink-0 text-mute" />
+              <span>
+                Your timezone <span className="text-mute">· {detectedZone}</span>
+              </span>
             </button>
-          </p>
-        ) : null}
-        <div key={`${query}:${offset}`} className="min-h-0 overflow-y-auto overscroll-contain">
-          <ul className="mt-2">
-            {results.map((city) => (
-              <li key={placeIdentity(city)}>
+          ) : null}
+          {error ? (
+            <p role="alert" className="px-1 text-sm">
+              City search unavailable.{" "}
+              <button
+                type="button"
+                className="btn btn-ghost text-accent"
+                onClick={() => setRetry((value) => value + 1)}
+              >
+                Retry
+              </button>
+            </p>
+          ) : null}
+          <div key={`${query}:${offset}`} className="min-h-0 overflow-y-auto overscroll-contain">
+            <ul className="mt-1">
+              {results.map((city) => (
+                <li key={placeIdentity(city)}>
+                  <button
+                    type="button"
+                    disabled={board.places.length >= 8 || !city.zone || !isValidZone(city.zone)}
+                    className="menu-item min-h-11 flex-col items-start justify-center gap-0 break-words py-2"
+                    onClick={() => select(city)}
+                  >
+                    <span className="block font-medium">{city.label}</span>
+                    <span className="block text-xs text-mute">
+                      {city.region} · {city.zone || "No timezone recorded"}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <div className="flex">
+              {offset > 0 ? (
                 <button
                   type="button"
-                  disabled={board.places.length >= 8 || !city.zone || !isValidZone(city.zone)}
-                  className="press min-h-11 w-full break-words px-2 py-2 text-left text-sm disabled:opacity-50"
-                  onClick={() => select(city)}
+                  disabled={loading}
+                  className="btn btn-ghost min-h-11 flex-1"
+                  onClick={() => (
+                    setLoading(true),
+                    setOffset((value) => Math.max(0, value - PAGE_SIZE))
+                  )}
                 >
-                  <span className="block">{city.label}</span>
-                  <span className="block text-xs text-mute">
-                    {city.region} · {city.zone || "No timezone recorded"}
-                  </span>
+                  Previous results
                 </button>
-              </li>
-            ))}
-          </ul>
-          <div className="flex">
-            {offset > 0 ? (
-              <button
-                type="button"
-                disabled={loading}
-                className="press min-h-11 flex-1 px-2 text-sm"
-                onClick={() => (setLoading(true), setOffset((value) => Math.max(0, value - PAGE_SIZE)))}
-              >
-                Previous results
-              </button>
-            ) : null}
-            {offset + PAGE_SIZE < total ? (
-              <button
-                type="button"
-                disabled={loading}
-                className="press min-h-11 flex-1 px-2 text-sm"
-                onClick={() => (setLoading(true), setOffset((value) => value + PAGE_SIZE))}
-              >
-                Load more ({total - offset - PAGE_SIZE} remaining)
-              </button>
+              ) : null}
+              {offset + PAGE_SIZE < total ? (
+                <button
+                  type="button"
+                  disabled={loading}
+                  className="btn btn-ghost min-h-11 flex-1"
+                  onClick={() => (setLoading(true), setOffset((value) => value + PAGE_SIZE))}
+                >
+                  Load more ({total - offset - PAGE_SIZE} remaining)
+                </button>
+              ) : null}
+            </div>
+            {!loading && !error && results.length === 0 ? (
+              <p className="px-1 py-2 text-sm text-mute">
+                {searching
+                  ? `No cities match “${query.trim()}”. Try a city name or an IANA zone like Europe/Paris.`
+                  : "Start typing a city name or an IANA zone like Europe/Paris."}
+              </p>
             ) : null}
           </div>
-          {!loading && !error && results.length === 0 ? (
-            <p className="text-sm text-mute">No matching city or timezone.</p>
-          ) : null}
-        </div>
-        {board.places.length >= 8 ? (
-          <p className="shrink-0 text-xs text-mute">Up to eight locations.</p>
-        ) : null}
         </Popover.Content>
       </Popover.Portal>
     </Popover.Root>
