@@ -131,26 +131,6 @@
   html {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    scroll-padding-top: 1rem;
-  }
-
-  /* Keep focused content clear of the sticky toolbar, but never scroll for the toolbar itself. */
-  @media (min-height: 700px), (min-width: 640px) and (min-height: 560px) {
-    html {
-      --bar-clear: 11rem;
-      scroll-padding-top: var(--bar-clear);
-    }
-
-    .float-bar,
-    .float-bar * {
-      scroll-margin-top: calc(var(--bar-clear) * -1);
-    }
-  }
-
-  @media (min-width: 768px) and (min-height: 560px) {
-    html {
-      --bar-clear: 6rem;
-    }
   }
 
   body {
