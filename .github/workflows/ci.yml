@@ -189,6 +189,12 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm audit --audit-level=high
+      - name: Scan locked dependencies against OSV
+        run: >-
+          docker run --rm
+          -v "$PWD/package-lock.json:/scan/package-lock.json:ro"
+          ghcr.io/google/osv-scanner:v2.6.0@sha256:afd838850ac1a0fcc15ff4a041dc9ba11123c3f0d2666217a5f0fcf9222b55fa
+          scan source --lockfile=/scan/package-lock.json
 
 
   branch-name:
