@@ -40,6 +40,28 @@ function formatter(timeZone: string): Intl.DateTimeFormat {
   return fmt;
 }
 
+/** Legacy IANA links that browsers still report for the device zone. */
+const ZONE_ALIASES: Record<string, string> = {
+  "Europe/Kiev": "Europe/Kyiv",
+  "Europe/Uzhgorod": "Europe/Kyiv",
+  "Europe/Zaporozhye": "Europe/Kyiv",
+  "Asia/Calcutta": "Asia/Kolkata",
+  "Asia/Saigon": "Asia/Ho_Chi_Minh",
+  "Asia/Katmandu": "Asia/Kathmandu",
+  "Asia/Rangoon": "Asia/Yangon",
+  "Atlantic/Faeroe": "Atlantic/Faroe",
+  "America/Buenos_Aires": "America/Argentina/Buenos_Aires",
+  "America/Indianapolis": "America/Indiana/Indianapolis",
+  "Pacific/Truk": "Pacific/Chuuk",
+  "Pacific/Ponape": "Pacific/Pohnpei",
+};
+
+/** The current IANA name for a zone alias, when this engine knows it. */
+export function canonicalZone(timeZone: string): string {
+  const target = ZONE_ALIASES[timeZone];
+  return target && isValidZone(target) ? target : timeZone;
+}
+
 export function isValidZone(timeZone: string): boolean {
   try {
     formatter(timeZone).format(0);
@@ -157,15 +179,30 @@ export function midnightUtc(day: string, timeZone: string): number {
 
 export type ClockFormat = "24h" | "12h" | "mixed";
 
-export function formatHm(utcMs: number, timeZone: string, format: ClockFormat = "24h"): string {
-  const parts = partsInZone(utcMs, timeZone);
-  const full = `${pad2(parts.hour)}:${pad2(parts.minute)}`;
-  const twelve = `${parts.hour % 12 || 12}:${pad2(parts.minute)} ${parts.hour < 12 ? "AM" : "PM"}`;
+function usesTwelveHour(timeZone: string, format: ClockFormat): boolean {
   const nativeTwelve =
     /^(America\/(New_York|Chicago|Denver|Los_Angeles|Toronto|Vancouver)|Australia\/|Asia\/Kolkata|Pacific\/Honolulu)/.test(
       timeZone,
     );
-  return format === "12h" || (format === "mixed" && nativeTwelve) ? twelve : full;
+  return format === "12h" || (format === "mixed" && nativeTwelve);
+}
+
+/** Minutes from local midnight as a clock label in the board's time format (1440 reads as 24:00). */
+export function formatClockMinutes(
+  minutes: number,
+  timeZone: string,
+  format: ClockFormat = "24h",
+): string {
+  const hour = Math.floor(minutes / 60);
+  const minute = minutes % 60;
+  if (!usesTwelveHour(timeZone, format)) return `${pad2(hour)}:${pad2(minute)}`;
+  const wall = hour % 24;
+  return `${wall % 12 || 12}:${pad2(minute)} ${wall < 12 ? "AM" : "PM"}`;
+}
+
+export function formatHm(utcMs: number, timeZone: string, format: ClockFormat = "24h"): string {
+  const parts = partsInZone(utcMs, timeZone);
+  return formatClockMinutes(parts.hour * 60 + parts.minute, timeZone, format);
 }
 
 export function formatOffset(utcMs: number, timeZone: string): string {
