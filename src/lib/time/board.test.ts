@@ -151,3 +151,24 @@ test("meeting brief identifies each city's dates when a meeting crosses midnight
   assert.match(brief, /Kathmandu 2026-10-06 05:15–2026-10-06 06:15/);
   assert.match(brief, /Calendar was not applied/);
 });
+
+test("distinct worldwide cities sharing a timezone retain their names and regions in state and links", () => {
+  const base = placeForZone("Europe/London")!;
+  const places = [
+    { ...base, cityId: "2638077", label: "Sheffield", region: "England, United Kingdom" },
+    { ...base, cityId: "2655603", label: "Birmingham", region: "England, United Kingdom" },
+  ];
+  const board = sanitizeBoard({ ...defaultBoard(now), places: [...places, places[0]] }, now);
+  assert.deepEqual(board.places, places);
+  assert.deepEqual(boardFromQuery(boardToQuery(board), now)?.places, places);
+  assert.deepEqual(sanitizeBoard(JSON.parse(JSON.stringify(board)), now).places, places);
+});
+
+
+test("long recorded city names survive reload and sharing", () => {
+  const name = "United Townships of Dysart, Dudley, Harcourt, Guilford, Harburn, Bruton, Havelock, Eyre and Clyde";
+  const city = { ...placeForZone("America/Toronto")!, cityId: "13680011", label: name, region: "Ontario, Canada" };
+  const board = sanitizeBoard({ ...defaultBoard(now), places: [city] }, now);
+  assert.equal(board.places[0]?.label, name);
+  assert.equal(boardFromQuery(boardToQuery(board), now)?.places[0]?.label, name);
+});

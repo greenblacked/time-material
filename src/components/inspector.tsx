@@ -52,7 +52,10 @@ export function Inspector({
 
       <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {view.readouts.map((row) => (
-          <li key={row.place.zone} className="flex items-baseline justify-between gap-3">
+          <li
+            key={row.place.cityId ?? row.place.zone}
+            className="flex items-baseline justify-between gap-3"
+          >
             <span>
               <span className="block text-sm">{row.place.label}</span>
               <span
@@ -193,7 +196,7 @@ export function Inspector({
               {view.partials.length > 0 ? (
                 <ul className="flex flex-col gap-2">
                   {view.partials.map((partial) => (
-                    <li key={partial.without.zone}>
+                    <li key={partial.without.cityId ?? partial.without.zone}>
                       <button
                         type="button"
                         className="press flex min-h-11 w-full flex-col items-start justify-center rounded-sm px-1 text-left text-sm"

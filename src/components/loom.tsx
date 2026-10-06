@@ -1,5 +1,11 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { selectionRange, resizeSelection, snapMinutes, type Board } from "@/lib/time/board";
+import {
+  placeIdentity,
+  selectionRange,
+  resizeSelection,
+  snapMinutes,
+  type Board,
+} from "@/lib/time/board";
 import { cityByZone } from "@/lib/time/cities";
 import type { Derived } from "@/lib/time/derive";
 import { axisMinutes, inWork, utcFromAxisMinutes, type Place } from "@/lib/time/intersect";
@@ -48,6 +54,14 @@ function bandStyle(
 export function Loom({ board, view, now, onCut, onRange, onPlaces, cityChooser }: LoomProps) {
   const trackRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
+  const touchTap = useRef<{
+    pointerId: number;
+    x: number;
+    y: number;
+    minute: number;
+    scrollLeft: number;
+  } | null>(null);
+  const tappedCut = useRef<number | null>(null);
   const drag = useRef<{
     anchor: number;
     pointerX: number;
@@ -128,13 +142,16 @@ export function Loom({ board, view, now, onCut, onRange, onPlaces, cityChooser }
     const viewport = viewportRef.current;
     const track = trackRef.current;
     if (!viewport || !track || drag.current) return;
+    const preserveViewport = tappedCut.current === board.cutMinutes;
+    tappedCut.current = null;
+    if (preserveViewport) return;
     const left =
       ((cutStartMin - view.viewStartMin) / (view.viewEndMin - view.viewStartMin)) *
       track.scrollWidth;
     if (left < viewport.scrollLeft || left > viewport.scrollLeft + viewport.clientWidth - 80) {
       viewport.scrollLeft = Math.max(0, left - viewport.clientWidth / 2);
     }
-  }, [board.day, view.axis.zone, board.span, cutStartMin, view.viewStartMin, view.viewEndMin]);
+  }, [board.day, board.cutMinutes, view.axis.zone, board.span, cutStartMin, view.viewStartMin, view.viewEndMin]);
   const nowMin = now === null ? null : axisMinutes(now, view.axis.zone, board.day);
   const cutEndMin = cutStartMin + board.durationMin;
   const cutStyle = bandStyle(cutStartMin, cutEndMin, view.viewStartMin, view.viewEndMin);
@@ -155,17 +172,17 @@ export function Loom({ board, view, now, onCut, onRange, onPlaces, cityChooser }
             </div>
             {board.places.map((place, index) => (
               <div
-                key={place.zone}
+                key={place.cityId ?? place.zone}
                 className={`${ROW} city-row relative flex flex-col justify-center border-b border-line px-3`}
                 draggable
                 onDragStart={() => {
-                  draggedCity.current = place.zone;
+                  draggedCity.current = placeIdentity(place);
                 }}
                 onDragOver={(event) => event.preventDefault()}
                 onDrop={(event) => {
                   event.preventDefault();
                   const source = board.places.findIndex(
-                    (item) => item.zone === draggedCity.current,
+                    (item) => placeIdentity(item) === draggedCity.current,
                   );
                   if (source >= 0) moveCity(source, index - source);
                   draggedCity.current = null;
@@ -178,7 +195,7 @@ export function Loom({ board, view, now, onCut, onRange, onPlaces, cityChooser }
                   </span>
                 </div>
                 <span className="truncate text-xs text-mute">
-                  {cityByZone(place.zone)?.region ?? place.zone.split("/")[0]}
+                  {place.region ?? cityByZone(place.zone)?.region ?? place.zone.split("/")[0]}
                 </span>
                 <span className="truncate text-xs text-mute tabular-nums">
                   {now === null ? "" : todayInZone(place.zone, now)}
@@ -217,7 +234,9 @@ export function Loom({ board, view, now, onCut, onRange, onPlaces, cityChooser }
                       onClick={() =>
                         onPlaces([
                           place,
-                          ...board.places.filter((item) => item.zone !== place.zone),
+                          ...board.places.filter(
+                            (item) => placeIdentity(item) !== placeIdentity(place),
+                          ),
                         ])
                       }
                     >
@@ -248,13 +267,13 @@ export function Loom({ board, view, now, onCut, onRange, onPlaces, cityChooser }
                       <input
                         aria-label={`Rename ${place.label}`}
                         className="h-11 w-full border border-line bg-canvas px-2"
-                        maxLength={79}
+                        maxLength={400}
                         value={place.label}
                         onChange={(event) => {
                           if (event.target.value.trim())
                             onPlaces(
                               board.places.map((item) =>
-                                item.zone === place.zone
+                                placeIdentity(item) === placeIdentity(place)
                                   ? { ...item, label: event.target.value }
                                   : item,
                               ),
@@ -277,7 +296,7 @@ export function Loom({ board, view, now, onCut, onRange, onPlaces, cityChooser }
                               if (value !== null)
                                 onPlaces(
                                   board.places.map((item) =>
-                                    item.zone === place.zone
+                                    placeIdentity(item) === placeIdentity(place)
                                       ? {
                                           ...item,
                                           [key]: key === "workEnd" && value === 0 ? 1440 : value,
@@ -308,7 +327,11 @@ export function Loom({ board, view, now, onCut, onRange, onPlaces, cityChooser }
                       aria-label={`Remove ${place.label}`}
                       disabled={board.places.length < 2}
                       onClick={() =>
-                        onPlaces(board.places.filter((item) => item.zone !== place.zone))
+                        onPlaces(
+                          board.places.filter(
+                            (item) => placeIdentity(item) !== placeIdentity(place),
+                          ),
+                        )
                       }
                     >
                       Remove
@@ -318,14 +341,25 @@ export function Loom({ board, view, now, onCut, onRange, onPlaces, cityChooser }
               </div>
             ))}
           </div>
-          <div ref={viewportRef} className="min-w-0 flex-1 overflow-x-auto">
+          <div ref={viewportRef} className="timeline-viewport min-w-0 flex-1 overflow-x-auto">
             <div
               ref={trackRef}
               data-testid="time-track"
-              className="relative touch-none"
+              className="timeline-track relative"
               style={{ minWidth: view.hours.length * 56 }}
               onPointerDown={(event) => {
                 if ((event.target as HTMLElement).closest("[data-cut]")) return;
+                if (!event.isPrimary || event.button !== 0) return;
+                if (event.pointerType === "touch") {
+                  touchTap.current = {
+                    pointerId: event.pointerId,
+                    x: event.clientX,
+                    y: event.clientY,
+                    minute: pointerMinute(event.clientX),
+                    scrollLeft: viewportRef.current?.scrollLeft ?? 0,
+                  };
+                  return;
+                }
                 event.currentTarget.setPointerCapture(event.pointerId);
                 drag.current = {
                   anchor: pointerMinute(event.clientX),
@@ -337,10 +371,33 @@ export function Loom({ board, view, now, onCut, onRange, onPlaces, cityChooser }
                 };
               }}
               onPointerMove={(event) => {
+                if (event.pointerType === "touch") {
+                  const tap = touchTap.current;
+                  if (tap && Math.hypot(event.clientX - tap.x, event.clientY - tap.y) > 8)
+                    touchTap.current = null;
+                  return;
+                }
                 setHoverMin(pointerMinute(event.clientX));
                 applyDrag(event.clientX, event.shiftKey);
               }}
               onPointerUp={(event) => {
+                if (event.pointerType === "touch") {
+                  const tap = touchTap.current;
+                  touchTap.current = null;
+                  if (
+                    tap?.pointerId === event.pointerId &&
+                    Math.hypot(event.clientX - tap.x, event.clientY - tap.y) <= 8 &&
+                    Math.abs((viewportRef.current?.scrollLeft ?? 0) - tap.scrollLeft) <= 1
+                  ) {
+                    const cut = Math.max(
+                      0,
+                      Math.min(length - board.durationMin, snapMinutes(tap.minute, 15)),
+                    );
+                    tappedCut.current = cut;
+                    onCut(cut);
+                  }
+                  return;
+                }
                 if (drag.current?.mode === "draw") {
                   if (drag.current.moved) applyDrag(event.clientX, event.shiftKey);
                   else
@@ -357,6 +414,7 @@ export function Loom({ board, view, now, onCut, onRange, onPlaces, cityChooser }
                 drag.current = null;
               }}
               onPointerCancel={() => {
+                touchTap.current = null;
                 drag.current = null;
               }}
               onPointerLeave={() => setHoverMin(null)}
@@ -378,7 +436,7 @@ export function Loom({ board, view, now, onCut, onRange, onPlaces, cityChooser }
               <div className="relative">
                 {board.places.map((place) => (
                   <div
-                    key={place.zone}
+                    key={place.cityId ?? place.zone}
                     className={`${ROW} grid border-b border-line`}
                     style={columns}
                   >
@@ -467,6 +525,9 @@ export function Loom({ board, view, now, onCut, onRange, onPlaces, cityChooser }
                   }}
                   onPointerDown={(event) => {
                     event.stopPropagation();
+                    if (!event.isPrimary || event.button !== 0) return;
+                    event.preventDefault();
+                    touchTap.current = null;
                     event.currentTarget.setPointerCapture(event.pointerId);
                     const edge = (event.target as HTMLElement).dataset.edge;
                     drag.current = {
@@ -480,6 +541,7 @@ export function Loom({ board, view, now, onCut, onRange, onPlaces, cityChooser }
                   }}
                   onPointerMove={(event) => {
                     event.stopPropagation();
+                    if (drag.current) event.preventDefault();
                     applyDrag(event.clientX, event.shiftKey);
                   }}
                   onPointerUp={(event) => {

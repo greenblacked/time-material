@@ -11,6 +11,7 @@ import {
   defaultBoard,
   loadBoard,
   placeForZone,
+  placeIdentity,
   withPlaces,
   type Board,
 } from "@/lib/time/board";
@@ -138,6 +139,7 @@ export function BoardApp() {
       "week",
       "p",
       "labels",
+      "cities",
       "clock",
       "zones",
       "weekends",
@@ -481,12 +483,15 @@ export function BoardApp() {
               <CityDesk
                 board={board}
                 detectedZone={detectedZone}
-                onAdd={(zone) => {
-                  const place = placeForZone(zone);
+                onAdd={(city) => {
+                  const base = placeForZone(city.zone);
+                  const place = base
+                    ? { ...base, label: city.label, region: city.region, cityId: city.cityId }
+                    : null;
                   if (
                     place &&
                     board.places.length < 8 &&
-                    !board.places.some((item) => item.zone === zone)
+                    !board.places.some((item) => placeIdentity(item) === placeIdentity(place))
                   )
                     setPlaces([...board.places, place]);
                 }}

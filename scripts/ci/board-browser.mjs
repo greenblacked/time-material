@@ -308,12 +308,9 @@ for (const [engine, browserType] of engineNames.map((name) => [name, browserType
           await waitState(page, "cutMinutes", 540);
           await waitState(page, "durationMin", 150);
 
-          await page
-            .locator("summary")
-            .filter({ hasText: /^Add city or timezone$/ })
-            .click();
+          await page.getByRole("button", { name: "Add city or timezone", exact: true }).click();
           await page.getByLabel("Search cities or timezones", { exact: true }).fill("UTC");
-          await page.getByRole("button", { name: /^UTC\s+UTC$/ }).click();
+          await page.getByRole("button", { name: /^UTC\b.*\bUTC$/ }).click();
           await page.waitForFunction(() =>
             JSON.parse(localStorage.getItem("time-material:v1")).places.some(
               (place) => place.zone === "UTC",

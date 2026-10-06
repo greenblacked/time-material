@@ -24,7 +24,7 @@
     "deploy:cloudflare:dry-run": "wrangler deploy --dry-run --no-autoconfig --no-install-skills --config dist/server/wrangler.json",
     "deploy:cloudflare": "wrangler deploy --no-autoconfig --no-install-skills --config dist/server/wrangler.json",
     "deploy:cloudflare:stage": "wrangler preview --no-install-skills --config dist/server/wrangler.json --name stage --ignore-base-config",
-    "test:browser": "node scripts/ci/board-browser.mjs",
+    "test:browser": "node scripts/ci/board-browser.mjs && node scripts/ci/world-city-browser.mjs",
     "test:coverage": "node --experimental-strip-types --experimental-test-coverage --test 'scripts/**/*.test.mjs' 'src/**/*.test.ts'"
   },
   "dependencies": {

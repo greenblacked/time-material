@@ -1,6 +1,6 @@
 import type { ScheduleEvent, ScheduleResponse } from "../schedule/types.ts";
 import { zoomLabel } from "../schedule/parse.ts";
-import { clampCut, viewBounds, type Board } from "./board.ts";
+import { placeIdentity, clampCut, viewBounds, type Board } from "./board.ts";
 import {
   axisMinutes,
   findOpenings,
@@ -137,7 +137,7 @@ export function derive(board: Board, schedule: ScheduleResponse | null): Derived
   const partials: PartialOpening[] = [];
   if (board.places.length > 1) {
     for (const without of board.places) {
-      const rest = board.places.filter((place) => place.zone !== without.zone);
+      const rest = board.places.filter((place) => placeIdentity(place) !== placeIdentity(without));
       const alt = findOpenings(
         rest,
         board.weekdaysOnly,

@@ -3,6 +3,8 @@ import { midnightUtc, partsInZone } from "./zoned.ts";
 export type Place = {
   zone: string;
   label: string;
+  cityId?: string;
+  region?: string;
   /** Minutes from local midnight. If end is not after start, the window crosses midnight. */
   workStart: number;
   workEnd: number;

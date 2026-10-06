@@ -20,7 +20,7 @@ export default defineConfig(({ command, isPreview }) => ({
     strictPort: true,
     // The preview proxy forwards its own host name. Without this, Vite
     // answers 403 and the pane stays blank.
-    allowedHosts: ["time-material-review.orb.local"],
+    allowedHosts: ["time-material-review.orb.local", "time-material-dev.orb.local"],
     headers: {
       "Cache-Control": "no-store",
     },

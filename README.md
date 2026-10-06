@@ -4,13 +4,16 @@ A timezone planner for comparing cities and finding shared working hours.
 
 ## Features
 
-- Add cities or IANA time zones and reorder the reference city.
+- Search the worldwide city directory or IANA time zones and reorder the reference city.
+- Swipe the timeline on touch devices and keep distinct cities in the same timezone.
 - Compare local dates and times, including daylight-saving changes.
 - Select a meeting interval and adjust working hours.
 - Use light or dark glass controls and a custom date picker.
 - Share a board, copy meeting details, download an ICS file, or open a Google Calendar event draft.
 
 Account login and calendar synchronization are not included. The app requires no database or OAuth credentials. Calendar exports do not connect to your account or read events.
+
+The [city directory](docs/city-data.md) contains over five million GeoNames populated-place records. Search loads compressed shards on demand; coverage follows the source dataset.
 
 ## Development
 

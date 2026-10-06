@@ -37,6 +37,10 @@ export function placeForZone(zone: string): Place | null {
   };
 }
 
+export function placeIdentity(place: Pick<Place, "zone" | "cityId">): string {
+  return place.cityId ? `city:${place.cityId}` : `zone:${place.zone}`;
+}
+
 function defaultPlaces(): Place[] {
   return ["Europe/Kyiv", "Europe/London", "America/New_York"]
     .map((zone) => placeForZone(zone))
@@ -108,7 +112,10 @@ export function applyDeviceZone(board: Board, detected: string, now: number): Bo
   if (board.places[0]?.zone === detected) return board;
   const home = board.places.find((place) => place.zone === detected) ?? placeForZone(detected);
   if (!home) return board;
-  const places = [home, ...board.places.filter((place) => place.zone !== home.zone)].slice(0, 8);
+  const places = [
+    home,
+    ...board.places.filter((place) => placeIdentity(place) !== placeIdentity(home)),
+  ].slice(0, 8);
   return seatCut({ ...board, places, day: todayInZone(home.zone, now) });
 }
 
@@ -120,7 +127,7 @@ function isPlace(value: unknown): value is Place {
     isValidZone(record.zone) &&
     typeof record.label === "string" &&
     record.label.trim().length > 0 &&
-    record.label.length < 80 &&
+    record.label.length <= 400 &&
     typeof record.workStart === "number" &&
     typeof record.workEnd === "number" &&
     Number.isFinite(record.workStart) &&
@@ -140,13 +147,19 @@ export function sanitizeBoard(value: unknown, now: number): Board {
   if (places.length === 0) return fallback;
   const unique: Place[] = [];
   for (const place of places) {
-    if (unique.some((item) => item.zone === place.zone)) continue;
-    unique.push({
+    const clean: Place = {
       zone: place.zone,
       label: place.label.trim(),
+      ...(typeof place.cityId === "string" && /^\d{1,12}$/.test(place.cityId)
+        ? { cityId: place.cityId }
+        : {}),
+      ...(typeof place.region === "string" && place.region.length < 160
+        ? { region: place.region.trim() }
+        : {}),
       workStart: Math.round(place.workStart),
       workEnd: Math.round(place.workEnd),
-    });
+    };
+    if (!unique.some((item) => placeIdentity(item) === placeIdentity(clean))) unique.push(clean);
   }
   const day =
     typeof record.day === "string" && parseDay(record.day) !== null
@@ -188,6 +201,10 @@ export function boardToQuery(board: Board): string {
   params.set("week", board.weekdaysOnly ? "1" : "0");
   params.set("p", encodePlaces(board.places));
   params.set("labels", JSON.stringify(board.places.map((place) => place.label)));
+  params.set(
+    "cities",
+    JSON.stringify(board.places.map(({ cityId, region }) => ({ cityId, region }))),
+  );
   params.set("clock", board.clockFormat);
   params.set("zones", board.showTimezone ? "1" : "0");
   params.set("weekends", board.markWeekends ? "1" : "0");
@@ -204,6 +221,12 @@ export function boardFromQuery(search: string, now: number): Board | null {
   } catch {
     /* old or malformed link */
   }
+  let cities: unknown = [];
+  try {
+    cities = JSON.parse(params.get("cities") ?? "[]");
+  } catch {
+    /* malformed metadata */
+  }
   const places: Place[] = [];
   for (const part of packed.split(";")) {
     const [zone, start, end] = part.split(",");
@@ -214,10 +237,14 @@ export function boardFromQuery(search: string, now: number): Board | null {
     const base = placeForZone(zone);
     if (!base) continue;
     const custom = Array.isArray(labels) ? labels[places.length] : undefined;
+    const metadata = Array.isArray(cities) ? cities[places.length] : undefined;
     places.push({
       ...base,
+      ...(metadata && typeof metadata === "object"
+        ? { cityId: metadata.cityId, region: metadata.region }
+        : {}),
       label:
-        typeof custom === "string" && custom.trim() && custom.length < 80 ? custom : base.label,
+        typeof custom === "string" && custom.trim() && custom.length <= 400 ? custom : base.label,
       workStart,
       workEnd,
     });

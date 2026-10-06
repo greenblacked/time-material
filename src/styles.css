@@ -329,6 +329,15 @@
     touch-action: none;
   }
 
+  .timeline-viewport {
+    max-width: 100%;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .timeline-track {
+    touch-action: pan-x pan-y pinch-zoom;
+  }
+
   .now-line {
     width: 1px;
     background: var(--color-accent);
