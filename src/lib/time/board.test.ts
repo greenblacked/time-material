@@ -11,6 +11,7 @@ import {
   placeForZone,
   applyDeviceZone,
 } from "./board.ts";
+import { searchableCities } from "./cities.ts";
 import { derive, googleCalendarUrl, meetingIcs, meetingBrief } from "./derive.ts";
 import { dayMinutes, parseDay, formatHm, formatClockMinutes } from "./zoned.ts";
 const now = Date.parse("2026-10-05T12:00:00Z");
@@ -194,4 +195,26 @@ test("clock minutes follow the board time format", () => {
   assert.equal(formatClockMinutes(17 * 60 + 30, "Europe/London", "12h"), "5:30 PM");
   assert.equal(formatClockMinutes(1440, "Europe/London", "24h"), "24:00");
   assert.equal(formatClockMinutes(1440, "Europe/London", "12h"), "12:00 AM");
+});
+
+test("saved boards and links with legacy zone names collapse into one current city", () => {
+  const kyiv = { zone: "Europe/Kyiv", label: "Kyiv", workStart: 540, workEnd: 1020 };
+  const kiev = { ...kyiv, zone: "Europe/Kiev", label: "Kiev" };
+  const saved = sanitizeBoard({ places: [kyiv, kiev] }, now);
+  assert.deepEqual(
+    saved.places.map((place) => place.zone),
+    ["Europe/Kyiv"],
+  );
+  const linked = boardFromQuery("p=Europe/Kiev,540,1020;Europe/Kyiv,540,1020", now);
+  assert.deepEqual(
+    linked?.places.map((place) => place.zone),
+    ["Europe/Kyiv"],
+  );
+});
+
+test("timezone search lists Kyiv once, under its current name", () => {
+  const zones = searchableCities().map((city) => city.zone);
+  assert.ok(!zones.includes("Europe/Kiev"));
+  assert.equal(zones.filter((zone) => zone === "Europe/Kyiv").length, 1);
+  assert.equal(new Set(zones).size, zones.length);
 });

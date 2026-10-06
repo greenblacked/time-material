@@ -1,3 +1,5 @@
+import { canonicalZone } from "./zoned.ts";
+
 export type CityOption = {
   zone: string;
   label: string;
@@ -67,7 +69,8 @@ export function searchableCities(): readonly CityOption[] {
   searchable = [
     ...CITIES,
     { zone: "UTC", label: "UTC", region: "Universal time" },
-    ...extra
+    // Engines still list legacy links such as Europe/Kiev; show each zone once, by its current name.
+    ...[...new Set(extra.map(canonicalZone))]
       .filter((zone) => !known.has(zone))
       .map((zone) => ({ zone, label: labelFromZone(zone), region: zone.split("/")[0]! })),
   ];
