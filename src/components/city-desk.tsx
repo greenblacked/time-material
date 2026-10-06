@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as Popover from "@radix-ui/react-popover";
 import { MapPin, Plus } from "lucide-react";
-import { isValidZone } from "@/lib/time/zoned";
+import { canonicalZone, isValidZone } from "@/lib/time/zoned";
 import { labelFromZone } from "@/lib/time/cities";
 import { searchWorldCities, type WorldCity } from "@/lib/time/world-cities";
 import { placeIdentity, type Board } from "@/lib/time/board";
@@ -143,7 +143,7 @@ export function CityDesk({ board, detectedZone, onAdd }: CityDeskProps) {
           </p>
           {!query.trim() &&
           detectedZone &&
-          !board.places.some((place) => place.zone === detectedZone) ? (
+          !board.places.some((place) => canonicalZone(place.zone) === detectedZone) ? (
             <button
               type="button"
               disabled={full}

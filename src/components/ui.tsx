@@ -84,6 +84,13 @@ export function Segmented<T extends string | number>({
  * A clock-time picker that follows the board's time format. Native time inputs
  * use the browser locale instead, so a 24-hour board could show "05:00 PM".
  */
+function optionLabel(minute: number, zone: string, format: ClockFormat, note: string | null) {
+  const text = formatClockMinutes(minute, zone, format);
+  // In 12-hour format an end of 24:00 reads like the start of the day, so say which midnight.
+  const marker = note ?? (minute >= 1440 && !text.startsWith("24") ? "next day" : null);
+  return marker ? `${text} (${marker})` : text;
+}
+
 export function TimeSelect({
   label,
   value,
@@ -93,6 +100,8 @@ export function TimeSelect({
   step = 15,
   from = 0,
   to = 1440 - step,
+  available,
+  note,
   className,
 }: {
   label: string;
@@ -104,10 +113,16 @@ export function TimeSelect({
   step?: number;
   from?: number;
   to?: number;
+  /** Leaves out minutes that do not exist, such as a spring-forward gap. */
+  available?: (minutes: number) => boolean;
+  /** Extra text for an option, such as a next-day marker. */
+  note?: (minutes: number) => string | null;
   className?: string;
 }) {
   const values: number[] = [];
-  for (let minute = from; minute <= to; minute += step) values.push(minute);
+  for (let minute = from; minute <= to; minute += step) {
+    if (!available || available(minute)) values.push(minute);
+  }
   if (!values.includes(value)) {
     values.push(value);
     values.sort((a, b) => a - b);
@@ -121,7 +136,7 @@ export function TimeSelect({
     >
       {values.map((minute) => (
         <option key={minute} value={minute}>
-          {formatClockMinutes(minute, zone, format)}
+          {optionLabel(minute, zone, format, note?.(minute) ?? null)}
         </option>
       ))}
     </select>
