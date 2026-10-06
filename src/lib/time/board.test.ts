@@ -9,9 +9,10 @@ import {
   resizeSelection,
   withPlaces,
   placeForZone,
+  applyDeviceZone,
 } from "./board.ts";
 import { derive, googleCalendarUrl, meetingIcs, meetingBrief } from "./derive.ts";
-import { dayMinutes, parseDay, formatHm } from "./zoned.ts";
+import { dayMinutes, parseDay, formatHm, formatClockMinutes } from "./zoned.ts";
 const now = Date.parse("2026-10-05T12:00:00Z");
 test("old state and links have display defaults; custom names and preferences roundtrip", () => {
   const board = defaultBoard(now);
@@ -164,11 +165,33 @@ test("distinct worldwide cities sharing a timezone retain their names and region
   assert.deepEqual(sanitizeBoard(JSON.parse(JSON.stringify(board)), now).places, places);
 });
 
-
 test("long recorded city names survive reload and sharing", () => {
-  const name = "United Townships of Dysart, Dudley, Harcourt, Guilford, Harburn, Bruton, Havelock, Eyre and Clyde";
-  const city = { ...placeForZone("America/Toronto")!, cityId: "13680011", label: name, region: "Ontario, Canada" };
+  const name =
+    "United Townships of Dysart, Dudley, Harcourt, Guilford, Harburn, Bruton, Havelock, Eyre and Clyde";
+  const city = {
+    ...placeForZone("America/Toronto")!,
+    cityId: "13680011",
+    label: name,
+    region: "Ontario, Canada",
+  };
   const board = sanitizeBoard({ ...defaultBoard(now), places: [city] }, now);
   assert.equal(board.places[0]?.label, name);
   assert.equal(boardFromQuery(boardToQuery(board), now)?.places[0]?.label, name);
+});
+
+test("device zone aliases resolve to the seeded city instead of a duplicate row", () => {
+  const board = applyDeviceZone(defaultBoard(now), "Europe/Kiev", now);
+  assert.equal(board.places[0]?.zone, "Europe/Kyiv");
+  assert.equal(board.places[0]?.label, "Kyiv");
+  assert.equal(
+    board.places.filter((place) => ["Europe/Kyiv", "Europe/Kiev"].includes(place.zone)).length,
+    1,
+  );
+});
+
+test("clock minutes follow the board time format", () => {
+  assert.equal(formatClockMinutes(9 * 60, "Europe/London", "24h"), "09:00");
+  assert.equal(formatClockMinutes(17 * 60 + 30, "Europe/London", "12h"), "5:30 PM");
+  assert.equal(formatClockMinutes(1440, "Europe/London", "24h"), "24:00");
+  assert.equal(formatClockMinutes(1440, "Europe/London", "12h"), "12:00 AM");
 });
