@@ -1,0 +1,29 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "time-material",
+  "main": "src/server.cloudflare.ts",
+  "compatibility_date": "2026-10-05",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": false,
+  "preview_urls": false,
+  "observability": {
+    "enabled": true,
+  },
+  "routes": [
+    {
+      "pattern": "time.szolotov.com",
+      "custom_domain": true,
+      "previews_enabled": true,
+    },
+  ],
+  "version_metadata": { "binding": "CF_VERSION_METADATA" },
+  "vars": {
+    "ROBOTS": "index",
+  },
+  "previews": {
+    "version_metadata": { "binding": "CF_VERSION_METADATA" },
+    "vars": {
+      "ROBOTS": "noindex",
+    },
+  },
+}

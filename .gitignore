@@ -1,0 +1,21 @@
+node_modules/
+.vercel/
+dist/
+.env
+.env.*
+screenshots/
+artifacts/
+attachments/
+*.log
+.node_modules.lock
+
+# Local agent instructions, roles, skills and reports
+/.agent/
+/.agents/
+
+# Cloudflare local runtime state
+/.wrangler/
+
+# Local hidden directories are private; repository workflows remain tracked.
+/.*/
+!/.github/
