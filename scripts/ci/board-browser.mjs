@@ -216,15 +216,17 @@ for (const [engine, browserType] of engineNames.map((name) => [name, browserType
           });
           await page.keyboard.press("Escape");
           await calendarDialog.waitFor({ state: "hidden" });
+          await page.waitForFunction(() =>
+            document.activeElement?.matches('button[aria-label="Open calendar"]'),
+          );
           assert.equal(
             await calendarTrigger.evaluate((el) => document.activeElement === el),
             true,
             "Escape returns focus to calendar trigger",
           );
-          assert.equal(
-            await page.evaluate(() => window.scrollY),
-            calendarScroll,
-            "Closing calendar keeps scroll position",
+          assert.ok(
+            Math.abs((await page.evaluate(() => window.scrollY)) - calendarScroll) <= 2,
+            "Closing calendar keeps scroll position within pixel rounding",
           );
           await calendarTrigger.press("Enter");
           await calendarDialog.waitFor({ state: "visible" });
@@ -235,10 +237,9 @@ for (const [engine, browserType] of engineNames.map((name) => [name, browserType
           await page.keyboard.press("Enter");
           await waitState(page, "day", "2026-10-06");
           await calendarDialog.waitFor({ state: "hidden" });
-          assert.equal(
-            await page.evaluate(() => window.scrollY),
-            calendarScroll,
-            "Selecting date keeps scroll position",
+          assert.ok(
+            Math.abs((await page.evaluate(() => window.scrollY)) - calendarScroll) <= 2,
+            "Selecting date keeps scroll position within pixel rounding",
           );
           await page.getByLabel("Board date").fill("2026-10-05");
           await waitState(page, "day", "2026-10-05");
