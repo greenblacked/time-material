@@ -6,7 +6,14 @@ import {
   searchWindow,
   type Place,
 } from "./intersect.ts";
-import { dayMinutes, isValidZone, parseDay, todayInZone, type ClockFormat } from "./zoned.ts";
+import {
+  canonicalZone,
+  dayMinutes,
+  isValidZone,
+  parseDay,
+  todayInZone,
+  type ClockFormat,
+} from "./zoned.ts";
 
 export type Span = "workday" | "day";
 
@@ -24,7 +31,8 @@ export type Board = {
 
 export const STORAGE_KEY = "time-material:v1";
 export const THEME_KEY = "time-material:theme";
-export const BACKGROUND_KEY = "time-material:background";
+/** The retired Background preference (Quiet/Glass/Full); only read to clear it. */
+export const LEGACY_BACKGROUND_KEY = "time-material:background";
 
 export function placeForZone(zone: string): Place | null {
   if (!isValidZone(zone)) return null;
@@ -105,7 +113,8 @@ export function defaultBoard(now: number): Board {
 }
 
 /** Regional zones become the axis. Plain UTC is left off so the board stays a city comparison. */
-export function applyDeviceZone(board: Board, detected: string, now: number): Board {
+export function applyDeviceZone(board: Board, reported: string, now: number): Board {
+  const detected = canonicalZone(reported);
   if (!detected.includes("/") || detected.startsWith("Etc/") || !isValidZone(detected)) {
     return board;
   }

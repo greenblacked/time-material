@@ -70,11 +70,16 @@ for (const [engine, browserType] of engineNames.map((name) => [name, browserType
           assert.notEqual(await themeSwitch.getAttribute("aria-checked"), oldTheme);
           await themeSwitch.click();
           assert.equal(
-            await page.evaluate(() =>
-              getComputedStyle(document.documentElement).getPropertyValue("--color-accent").trim(),
-            ),
-            colorScheme === "dark" ? "#f3cb59" : "#165ec9",
-            "Theme accent matches yellow dark / blue light",
+            await page.evaluate(() => {
+              const probe = document.createElement("span");
+              probe.style.color = "var(--color-accent)";
+              document.body.append(probe);
+              const accent = getComputedStyle(probe).color;
+              probe.remove();
+              return accent;
+            }),
+            colorScheme === "dark" ? "rgb(108, 158, 255)" : "rgb(22, 94, 201)",
+            "Theme accent is the same blue, lifted for dark",
           );
           const options = page.locator("summary").filter({ hasText: /^Options$/ });
           assert.equal(
@@ -194,11 +199,14 @@ for (const [engine, browserType] of engineNames.map((name) => [name, browserType
               accent,
             };
           });
-          assert.match(calendarStyle.blur, /blur\(/, "Calendar uses frosted glass");
-          assert.notEqual(
+          assert.ok(
+            !/blur\(/.test(calendarStyle.blur ?? ""),
+            "Calendar popover is a solid surface, not frosted glass",
+          );
+          assert.match(
             calendarStyle.background,
-            "rgba(0, 0, 0, 0)",
-            "Calendar has readable surface",
+            /^rgb\(/,
+            "Calendar has an opaque, readable surface",
           );
           assert.equal(
             calendarStyle.selected,
@@ -210,9 +218,10 @@ for (const [engine, browserType] of engineNames.map((name) => [name, browserType
             calendarScroll,
             "Opening calendar keeps scroll position",
           );
+          // A viewport capture shows the open popover; a full-page capture re-lays out the
+          // page under mobile emulation and moves scrollY, which the next assertion measures.
           await page.screenshot({
             path: join(artifactDir, `calendar-${engine}-${size}-${colorScheme}.png`),
-            fullPage: true,
           });
           await page.keyboard.press("Escape");
           await calendarDialog.waitFor({ state: "hidden" });

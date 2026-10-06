@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Button, TimeSelect } from "./ui";
+import { ArrowDown, ArrowUp, MoreHorizontal, Star, Trash2 } from "lucide-react";
 import {
   placeIdentity,
   selectionRange,
@@ -15,10 +17,9 @@ import {
   partsInZone,
   dayMinutes,
   nextOffsetChange,
-  inputToMinutes,
-  minutesToInput,
   todayInZone,
   formatLength,
+  dayKey,
 } from "@/lib/time/zoned";
 
 type LoomProps = {
@@ -28,11 +29,21 @@ type LoomProps = {
   onCut: (minutes: number) => void;
   onRange: (cutMinutes: number, durationMin: number) => void;
   onPlaces: (places: Place[]) => void;
+  onRemove: (place: Place) => void;
+  onSpan: (span: Board["span"]) => void;
   cityChooser: ReactNode;
 };
 
-const HEAD = "h-16";
-const ROW = "h-24 sm:h-20";
+const HEAD = "h-12";
+const ROW = "h-16";
+/** "1h", "1h 30m", "45m": fits a one-hour column. */
+function compactLength(minutes: number): string {
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  if (!hours) return `${rest}m`;
+  return rest ? `${hours}h ${rest}m` : `${hours}h`;
+}
+
 function percent(minute: number, start: number, end: number): number {
   return ((minute - start) / (end - start)) * 100;
 }
@@ -51,7 +62,41 @@ function bandStyle(
   return { left: `${left}%`, width: `${width}%` };
 }
 
-export function Loom({ board, view, now, onCut, onRange, onPlaces, cityChooser }: LoomProps) {
+/** Rename keeps an empty draft locally, so the field can be cleared and retyped. */
+function RenameField({ place, onRename }: { place: Place; onRename: (label: string) => void }) {
+  const [draft, setDraft] = useState<string | null>(null);
+  return (
+    <label className="field-label">
+      Name
+      <input
+        aria-label={`Rename ${place.label}`}
+        className="field w-full"
+        maxLength={400}
+        value={draft ?? place.label}
+        onChange={(event) => {
+          setDraft(event.target.value);
+          if (event.target.value.trim()) onRename(event.target.value);
+        }}
+        onBlur={() => setDraft(null)}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") setDraft(null);
+        }}
+      />
+    </label>
+  );
+}
+
+export function Loom({
+  board,
+  view,
+  now,
+  onCut,
+  onRange,
+  onPlaces,
+  onRemove,
+  onSpan,
+  cityChooser,
+}: LoomProps) {
   const trackRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
   const touchTap = useRef<{
@@ -149,9 +194,23 @@ export function Loom({ board, view, now, onCut, onRange, onPlaces, cityChooser }
       ((cutStartMin - view.viewStartMin) / (view.viewEndMin - view.viewStartMin)) *
       track.scrollWidth;
     if (left < viewport.scrollLeft || left > viewport.scrollLeft + viewport.clientWidth - 80) {
-      viewport.scrollLeft = Math.max(0, left - viewport.clientWidth / 2);
+      // Land on a whole hour column so no clipped label sits against the city column.
+      const column = track.scrollWidth / Math.max(1, view.hours.length);
+      viewport.scrollLeft = Math.max(
+        0,
+        Math.round((left - viewport.clientWidth / 2) / column) * column,
+      );
     }
-  }, [board.day, board.cutMinutes, view.axis.zone, board.span, cutStartMin, view.viewStartMin, view.viewEndMin]);
+  }, [
+    board.day,
+    board.cutMinutes,
+    view.axis.zone,
+    board.span,
+    cutStartMin,
+    view.viewStartMin,
+    view.viewEndMin,
+    view.hours.length,
+  ]);
   const nowMin = now === null ? null : axisMinutes(now, view.axis.zone, board.day);
   const cutEndMin = cutStartMin + board.durationMin;
   const cutStyle = bandStyle(cutStartMin, cutEndMin, view.viewStartMin, view.viewEndMin);
@@ -160,188 +219,238 @@ export function Loom({ board, view, now, onCut, onRange, onPlaces, cityChooser }
   const hoverUtc =
     hoverMin === null ? null : utcFromAxisMinutes(hoverMin, view.axis.zone, board.day);
 
+  const updatePlace = (place: Place, patch: Partial<Place>) =>
+    onPlaces(
+      board.places.map((item) =>
+        placeIdentity(item) === placeIdentity(place) ? { ...item, ...patch } : item,
+      ),
+    );
+  const referenceDay = now === null ? null : todayInZone(view.axis.zone, now);
+  const fmt = (utc: number, zone: string) => formatHm(utc, zone, board.clockFormat);
+  const valueText = [
+    `${fmt(view.cutStartUtc, view.axis.zone)} to ${fmt(view.cutEndUtc, view.axis.zone)} ${view.axis.label}`,
+    ...view.readouts
+      .filter((row) => !row.axis)
+      .map(
+        (row) =>
+          `${row.place.label} ${row.localStart} to ${row.localEnd}${row.inWork ? "" : ", outside work hours"}`,
+      ),
+  ].join("; ");
+  const moveBy = (delta: number) =>
+    onCut(Math.max(0, Math.min(length - board.durationMin, board.cutMinutes + delta)));
+  const readout =
+    hoverUtc !== null
+      ? {
+          label: "Pointer",
+          items: board.places.map((place) => `${place.label} ${fmt(hoverUtc, place.zone)}`),
+        }
+      : {
+          label: "Selected",
+          items: view.readouts.map((row) => `${row.place.label} ${row.localStart}`),
+        };
+
   return (
-    <section aria-label="Day" className="min-w-0">
+    <section aria-labelledby="timeline-heading" className="min-w-0">
+      <h2 id="timeline-heading" className="sr-only">
+        Timeline
+      </h2>
       <div className="panel">
         <div className="flex min-w-0">
-          <div className="w-32 shrink-0 border-r border-line sm:w-64">
-            <div
-              className={`${HEAD} city-chooser relative z-40 flex items-center border-b border-line px-2`}
-            >
+          <div className="w-36 shrink-0 border-r border-line md:w-56">
+            <div className={`${HEAD} city-chooser relative z-40 flex border-b border-line`}>
               {cityChooser}
             </div>
-            {board.places.map((place, index) => (
-              <div
-                key={place.cityId ?? place.zone}
-                className={`${ROW} city-row relative flex flex-col justify-center border-b border-line px-3`}
-                draggable
-                onDragStart={() => {
-                  draggedCity.current = placeIdentity(place);
-                }}
-                onDragOver={(event) => event.preventDefault()}
-                onDrop={(event) => {
-                  event.preventDefault();
-                  const source = board.places.findIndex(
-                    (item) => placeIdentity(item) === draggedCity.current,
-                  );
-                  if (source >= 0) moveCity(source, index - source);
-                  draggedCity.current = null;
-                }}
-              >
-                <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between sm:gap-2">
-                  <span className="truncate text-base font-medium leading-none">{place.label}</span>
-                  <span className="shrink-0 text-sm tabular-nums">
-                    {now === null ? "––:––" : formatHm(now, place.zone, board.clockFormat)}
-                  </span>
-                </div>
-                <span className="truncate text-xs text-mute">
-                  {place.region ?? cityByZone(place.zone)?.region ?? place.zone.split("/")[0]}
-                </span>
-                <span className="truncate text-xs text-mute tabular-nums">
-                  {now === null ? "" : todayInZone(place.zone, now)}
-                  {board.showTimezone && now !== null ? ` · ${formatOffset(now, place.zone)}` : ""}
-                </span>
-                <details
-                  className="city-row-menu absolute bottom-0 right-1 z-30 text-xs"
-                  onKeyDown={(event) => {
-                    if (event.key === "Escape") {
-                      event.currentTarget.open = false;
-                      event.currentTarget.querySelector("summary")?.focus();
-                    }
+            {board.places.map((place, index) => {
+              const localDay = now === null ? null : todayInZone(place.zone, now);
+              const dayDelta =
+                localDay && referenceDay && localDay !== referenceDay
+                  ? localDay > referenceDay
+                    ? 1
+                    : -1
+                  : 0;
+              const change = nextOffsetChange(view.cutStartUtc, place.zone);
+              return (
+                <div
+                  key={place.cityId ?? place.zone}
+                  className={`${ROW} city-row relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-1 border-b border-line pl-3 pr-1 last:border-b-0`}
+                  draggable
+                  onDragStart={() => {
+                    draggedCity.current = placeIdentity(place);
                   }}
-                  onBlur={(event) => {
-                    if (!event.currentTarget.contains(event.relatedTarget))
-                      event.currentTarget.open = false;
+                  onDragOver={(event) => event.preventDefault()}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    const source = board.places.findIndex(
+                      (item) => placeIdentity(item) === draggedCity.current,
+                    );
+                    if (source >= 0) moveCity(source, index - source);
+                    draggedCity.current = null;
                   }}
-                  onClick={(event) => {
-                    if ((event.target as HTMLElement).closest("button"))
-                      event.currentTarget.open = false;
-                  }}
-                  onPointerDown={(event) => event.stopPropagation()}
                 >
-                  <summary
-                    className="press cursor-pointer px-2"
-                    aria-label={`Options for ${place.label}`}
-                  >
-                    •••
-                  </summary>
-                  <div className="glass-menu panel absolute left-0 top-full w-60 p-3 shadow-lg">
-                    <button
-                      type="button"
-                      className="press min-h-11 w-full text-left"
-                      disabled={index === 0}
-                      aria-label={`Use ${place.label} as reference city`}
-                      onClick={() =>
-                        onPlaces([
-                          place,
-                          ...board.places.filter(
-                            (item) => placeIdentity(item) !== placeIdentity(place),
-                          ),
-                        ])
+                  <div className="min-w-0">
+                    <p className="flex min-w-0 items-baseline gap-1.5">
+                      <span className="truncate text-sm font-medium">{place.label}</span>
+                      {index === 0 ? (
+                        <Star
+                          role="img"
+                          aria-label="Reference city"
+                          className="size-3 shrink-0 self-center fill-current text-mute"
+                        />
+                      ) : null}
+                      <span className="hidden min-w-0 truncate text-xs text-mute md:inline">
+                        {place.region ?? cityByZone(place.zone)?.region ?? place.zone.split("/")[0]}
+                      </span>
+                    </p>
+                    <p className="flex min-w-0 items-center gap-1.5 text-xs text-mute tabular-nums">
+                      <span className="shrink-0 text-ink">
+                        {now === null ? "––:––" : fmt(now, place.zone)}
+                      </span>
+                      {dayDelta !== 0 ? (
+                        <span
+                          className="shrink-0 rounded-sm bg-inset px-1 font-medium text-ink"
+                          title={dayDelta > 0 ? "Next day" : "Previous day"}
+                        >
+                          {dayDelta > 0 ? "+1" : "−1"}
+                          <span className="sr-only"> day</span>
+                        </span>
+                      ) : null}
+                      {board.showTimezone && now !== null ? (
+                        <span className="truncate">{formatOffset(now, place.zone)}</span>
+                      ) : null}
+                    </p>
+                  </div>
+                  <details
+                    className="city-row-menu"
+                    onKeyDown={(event) => {
+                      if (event.key === "Escape") {
+                        event.currentTarget.open = false;
+                        event.currentTarget.querySelector("summary")?.focus();
                       }
+                    }}
+                    onBlur={(event) => {
+                      if (!event.currentTarget.contains(event.relatedTarget))
+                        event.currentTarget.open = false;
+                    }}
+                    onClick={(event) => {
+                      if ((event.target as HTMLElement).closest("button"))
+                        event.currentTarget.open = false;
+                    }}
+                    onPointerDown={(event) => event.stopPropagation()}
+                  >
+                    <summary
+                      className="icon-btn btn-ghost size-8 text-mute pointer-coarse:size-11"
+                      aria-label={`Options for ${place.label}`}
+                      title={`Options for ${place.label}`}
                     >
-                      Use as reference city
-                    </button>
-                    <div className="flex gap-2">
+                      <MoreHorizontal aria-hidden className="size-4" />
+                    </summary>
+                    <div className="glass-menu absolute left-2 top-[calc(100%-0.25rem)] w-[min(18rem,calc(100vw-2rem))] p-1">
+                      <div className="px-3 py-2">
+                        <p className="truncate text-sm font-medium">{place.label}</p>
+                        <p className="truncate text-xs text-mute">
+                          {place.zone}
+                          {now === null ? "" : ` · ${formatOffset(now, place.zone)}`}
+                        </p>
+                      </div>
+                      <div className="divider" />
                       <button
                         type="button"
-                        className="press min-h-11"
+                        className="menu-item"
                         disabled={index === 0}
-                        aria-label={`Move ${place.label} earlier`}
+                        aria-label={`Use ${place.label} as reference city`}
+                        onClick={() =>
+                          onPlaces([
+                            place,
+                            ...board.places.filter(
+                              (item) => placeIdentity(item) !== placeIdentity(place),
+                            ),
+                          ])
+                        }
+                      >
+                        <Star aria-hidden className="size-4 text-mute" />
+                        Use as reference city
+                      </button>
+                      <button
+                        type="button"
+                        className="menu-item"
+                        disabled={index === 0}
+                        aria-label={`Move ${place.label} up`}
                         onClick={() => moveCity(index, -1)}
                       >
-                        ↑ Earlier
+                        <ArrowUp aria-hidden className="size-4 text-mute" />
+                        Move up
                       </button>
                       <button
                         type="button"
-                        className="press min-h-11"
+                        className="menu-item"
                         disabled={index === board.places.length - 1}
-                        aria-label={`Move ${place.label} later`}
+                        aria-label={`Move ${place.label} down`}
                         onClick={() => moveCity(index, 1)}
                       >
-                        ↓ Later
+                        <ArrowDown aria-hidden className="size-4 text-mute" />
+                        Move down
+                      </button>
+                      <div className="divider" />
+                      <div className="grid gap-3 px-3 py-2">
+                        <RenameField
+                          place={place}
+                          onRename={(label) => updatePlace(place, { label })}
+                        />
+                        <fieldset className="grid grid-cols-2 gap-2">
+                          <legend className="field-label mb-1">Work hours</legend>
+                          {(["workStart", "workEnd"] as const).map((key) => (
+                            <label key={key} className="field-label">
+                              {key === "workStart" ? "Starts" : "Ends"}
+                              <TimeSelect
+                                label={`${place.label} ${key === "workStart" ? "work starts" : "work ends"}`}
+                                className="w-full px-2"
+                                format={board.clockFormat}
+                                zone={place.zone}
+                                value={place[key]}
+                                from={key === "workStart" ? 0 : 15}
+                                to={key === "workStart" ? 1425 : 1440}
+                                onChange={(value) => updatePlace(place, { [key]: value })}
+                              />
+                            </label>
+                          ))}
+                        </fieldset>
+                        {change ? (
+                          <p className="text-xs text-warn">
+                            Offset changes {new Date(change.at).toISOString().slice(0, 10)}:{" "}
+                            {change.before} → {change.after}
+                          </p>
+                        ) : (
+                          <p className="text-xs text-mute">No offset change in the next 7 days.</p>
+                        )}
+                      </div>
+                      <div className="divider" />
+                      <button
+                        type="button"
+                        className="menu-item menu-item-danger"
+                        aria-label={`Remove ${place.label}`}
+                        disabled={board.places.length < 2}
+                        onClick={() => onRemove(place)}
+                      >
+                        <Trash2 aria-hidden className="size-4" />
+                        Remove
                       </button>
                     </div>
-                    <label>
-                      Rename{" "}
-                      <input
-                        aria-label={`Rename ${place.label}`}
-                        className="h-11 w-full border border-line bg-canvas px-2"
-                        maxLength={400}
-                        value={place.label}
-                        onChange={(event) => {
-                          if (event.target.value.trim())
-                            onPlaces(
-                              board.places.map((item) =>
-                                placeIdentity(item) === placeIdentity(place)
-                                  ? { ...item, label: event.target.value }
-                                  : item,
-                              ),
-                            );
-                        }}
-                      />
-                    </label>
-                    <details className="mt-2">
-                      <summary className="cursor-pointer">Work hours</summary>
-                      {(["workStart", "workEnd"] as const).map((key) => (
-                        <label key={key} className="mt-2 block">
-                          {key === "workStart" ? "Work starts" : "Work ends"}
-                          <input
-                            type="time"
-                            aria-label={`${place.label} ${key === "workStart" ? "work starts" : "work ends"}`}
-                            className="h-11 w-full border border-line bg-canvas"
-                            value={minutesToInput(place[key])}
-                            onChange={(event) => {
-                              const value = inputToMinutes(event.target.value);
-                              if (value !== null)
-                                onPlaces(
-                                  board.places.map((item) =>
-                                    placeIdentity(item) === placeIdentity(place)
-                                      ? {
-                                          ...item,
-                                          [key]: key === "workEnd" && value === 0 ? 1440 : value,
-                                        }
-                                      : item,
-                                  ),
-                                );
-                            }}
-                          />
-                        </label>
-                      ))}
-                    </details>
-                    <p className="mt-2 text-mute">{place.zone}</p>
-                    {(() => {
-                      const change = nextOffsetChange(view.cutStartUtc, place.zone);
-                      return change ? (
-                        <p className="mt-2 text-warn">
-                          Offset changes {new Date(change.at).toISOString().slice(0, 10)}:{" "}
-                          {change.before} → {change.after}
-                        </p>
-                      ) : (
-                        <p className="mt-2 text-mute">No offset change in the next 7 days.</p>
-                      );
-                    })()}
-                    <button
-                      type="button"
-                      className="press min-h-11"
-                      aria-label={`Remove ${place.label}`}
-                      disabled={board.places.length < 2}
-                      onClick={() =>
-                        onPlaces(
-                          board.places.filter(
-                            (item) => placeIdentity(item) !== placeIdentity(place),
-                          ),
-                        )
-                      }
-                    >
-                      Remove
-                    </button>
-                  </div>
-                </details>
-              </div>
-            ))}
+                  </details>
+                </div>
+              );
+            })}
           </div>
-          <div ref={viewportRef} className="timeline-viewport min-w-0 flex-1 overflow-x-auto">
+          <div
+            ref={viewportRef}
+            className="timeline-viewport min-w-0 flex-1 overflow-x-auto"
+            onScroll={(event) => {
+              // Fade the clipped first column against the city column once scrolled.
+              event.currentTarget.toggleAttribute(
+                "data-scrolled",
+                event.currentTarget.scrollLeft > 1,
+              );
+            }}
+          >
             <div
               ref={trackRef}
               data-testid="time-track"
@@ -423,53 +532,61 @@ export function Loom({ board, view, now, onCut, onRange, onPlaces, cityChooser }
                 {view.hours.map((minute) => (
                   <div
                     key={minute}
-                    className="border-l border-line px-1 text-xs text-mute tabular-nums"
+                    className="hour-head flex items-end border-l border-line px-1.5 pb-1.5 text-xs text-mute tabular-nums first:border-l-0"
                   >
-                    {formatHm(
-                      utcFromAxisMinutes(minute, view.axis.zone, board.day),
-                      view.axis.zone,
-                      board.clockFormat,
-                    )}
+                    {fmt(utcFromAxisMinutes(minute, view.axis.zone, board.day), view.axis.zone)}
                   </div>
                 ))}
               </div>
               <div className="relative">
-                {board.places.map((place) => (
-                  <div
-                    key={place.cityId ?? place.zone}
-                    className={`${ROW} grid border-b border-line`}
-                    style={columns}
-                  >
-                    {view.hours.map((minute) => {
-                      const utc = utcFromAxisMinutes(minute, view.axis.zone, board.day);
-                      const local = partsInZone(utc, place.zone);
-                      const working = inWork(place, utc, board.weekdaysOnly);
-                      const night = local.hour < 7 || local.hour >= 21;
-                      return (
-                        <div
-                          key={minute}
-                          title={`${todayInZone(place.zone, utc)} ${formatHm(utc, place.zone, board.clockFormat)}`}
-                          className={`flex flex-col items-start justify-center border-l border-line px-1 text-sm text-mute tabular-nums ${
-                            working ? "cell-work" : night ? "cell-night" : ""
-                          } ${
-                            board.markWeekends && (local.weekday === 0 || local.weekday === 6)
-                              ? "bg-warn/10"
-                              : ""
-                          }`}
-                        >
-                          <span>
-                            {formatHm(utc, place.zone, board.clockFormat).replace(":00", "")}
-                          </span>
-                          {local.hour === 0 || minute === view.viewStartMin ? (
-                            <span className="mt-1 text-[10px]">
-                              {todayInZone(place.zone, utc).slice(5)}
-                            </span>
-                          ) : null}
-                        </div>
-                      );
-                    })}
-                  </div>
-                ))}
+                {board.places.map((place) => {
+                  const dateLabel = new Intl.DateTimeFormat("en-GB", {
+                    weekday: "short",
+                    day: "numeric",
+                    month: "short",
+                    timeZone: place.zone,
+                  });
+                  const weekdayLabel = new Intl.DateTimeFormat("en-GB", {
+                    weekday: "short",
+                    timeZone: place.zone,
+                  });
+                  return (
+                    <div
+                      key={place.cityId ?? place.zone}
+                      className={`${ROW} grid border-b border-line last:border-b-0`}
+                      style={columns}
+                    >
+                      {view.hours.map((minute) => {
+                        const utc = utcFromAxisMinutes(minute, view.axis.zone, board.day);
+                        const local = partsInZone(utc, place.zone);
+                        const working = inWork(place, utc, board.weekdaysOnly);
+                        const weekend =
+                          board.markWeekends && (local.weekday === 0 || local.weekday === 6);
+                        const localDay = dayKey(local.year, local.month, local.day);
+                        // Mark each local midnight, and the first column when the city is on another date.
+                        const showDay =
+                          local.hour === 0 ||
+                          (minute === view.viewStartMin && localDay !== board.day);
+                        return (
+                          <div
+                            key={minute}
+                            title={`${place.label} · ${dateLabel.format(utc)}, ${fmt(utc, place.zone)}`}
+                            className={`hour-cell flex flex-col items-start justify-center gap-1 border-l border-line px-1.5 text-sm tabular-nums first:border-l-0 ${
+                              working ? "cell-work font-medium" : "text-mute"
+                            } ${weekend ? "bg-warn/10" : ""}`}
+                          >
+                            <span>{fmt(utc, place.zone).replace(":00", "")}</span>
+                            {showDay ? (
+                              <span className="rounded-sm bg-surface px-1 text-xs font-medium text-ink ring-1 ring-line">
+                                {weekdayLabel.format(utc)}
+                              </span>
+                            ) : null}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })}
                 {view.sharedBands.map((band) => {
                   const style = bandStyle(
                     band.startMin,
@@ -489,47 +606,25 @@ export function Loom({ board, view, now, onCut, onRange, onPlaces, cityChooser }
               </div>
               {nowVisible ? (
                 <div
-                  className="now-line pointer-events-none absolute bottom-0 top-8 z-20"
+                  className="now-line pointer-events-none absolute bottom-0 top-12 z-20"
                   style={{ left: `${percent(nowMin ?? 0, view.viewStartMin, view.viewEndMin)}%` }}
-                  title="Now"
+                  aria-hidden
                 />
               ) : null}
               {cutStyle ? (
                 <div
                   data-cut
-                  role="slider"
-                  tabIndex={0}
-                  aria-label="Meeting start"
-                  aria-valuemin={0}
-                  aria-valuemax={length - 5}
-                  aria-valuenow={board.cutMinutes}
-                  aria-valuetext={`${formatHm(view.cutStartUtc, view.axis.zone, board.clockFormat)} to ${formatHm(view.cutEndUtc, view.axis.zone, board.clockFormat)}`}
-                  className="cut-block absolute bottom-0 top-8 z-10 touch-none"
+                  className="absolute inset-y-0 z-10 touch-none"
                   style={cutStyle}
                   onClick={(event) => event.stopPropagation()}
-                  onKeyDown={(event) => {
-                    const step = event.shiftKey ? 5 : 15;
-                    if (event.key === "ArrowLeft") {
-                      event.preventDefault();
-                      onCut(board.cutMinutes - step);
-                    } else if (event.key === "ArrowRight") {
-                      event.preventDefault();
-                      onCut(board.cutMinutes + step);
-                    } else if (event.key === "Home") {
-                      event.preventDefault();
-                      onCut(0);
-                    } else if (event.key === "End") {
-                      event.preventDefault();
-                      onCut(length - board.durationMin);
-                    }
-                  }}
                   onPointerDown={(event) => {
                     event.stopPropagation();
                     if (!event.isPrimary || event.button !== 0) return;
                     event.preventDefault();
                     touchTap.current = null;
                     event.currentTarget.setPointerCapture(event.pointerId);
-                    const edge = (event.target as HTMLElement).dataset.edge;
+                    const edge = (event.target as HTMLElement).closest<HTMLElement>("[data-edge]")
+                      ?.dataset.edge;
                     drag.current = {
                       anchor: pointerMinute(event.clientX),
                       pointerX: event.clientX,
@@ -552,23 +647,65 @@ export function Loom({ board, view, now, onCut, onRange, onPlaces, cityChooser }
                     drag.current = null;
                   }}
                 >
-                  <span className="pointer-events-none absolute left-1 top-1 whitespace-nowrap rounded-sm bg-accent px-2 py-1 text-xs text-canvas">
-                    {formatHm(view.cutStartUtc, view.axis.zone, board.clockFormat)} ·{" "}
-                    {formatLength(board.durationMin * 60_000)}
-                  </span>
+                  <div
+                    role="slider"
+                    tabIndex={0}
+                    aria-label="Meeting start"
+                    aria-valuemin={0}
+                    aria-valuemax={length - board.durationMin}
+                    aria-valuenow={board.cutMinutes}
+                    aria-valuetext={valueText}
+                    className="cut-block absolute inset-0 cursor-grab active:cursor-grabbing"
+                    onKeyDown={(event) => {
+                      const step = event.shiftKey ? 5 : 15;
+                      const moves: Record<string, number> = {
+                        ArrowLeft: -step,
+                        ArrowDown: -step,
+                        ArrowRight: step,
+                        ArrowUp: step,
+                        PageDown: -60,
+                        PageUp: 60,
+                      };
+                      if (event.key in moves) {
+                        event.preventDefault();
+                        moveBy(moves[event.key] ?? 0);
+                      } else if (event.key === "Home") {
+                        event.preventDefault();
+                        onCut(0);
+                      } else if (event.key === "End") {
+                        event.preventDefault();
+                        onCut(length - board.durationMin);
+                      }
+                    }}
+                  >
+                    {/* Sits in the header band above the hour labels and never leaves the block. */}
+                    <span className="cut-badge pointer-events-none absolute left-1 top-1 max-w-[calc(100%-0.5rem)] truncate rounded-sm bg-accent px-1.5 py-0.5 text-xs font-medium text-accent-fg tabular-nums">
+                      <span className="cut-badge-full">
+                        {fmt(view.cutStartUtc, view.axis.zone)} ·{" "}
+                        {formatLength(board.durationMin * 60_000)}
+                      </span>
+                      <span className="cut-badge-short">{compactLength(board.durationMin)}</span>
+                    </span>
+                  </div>
                   {(["start", "end"] as const).map((edge) => (
                     <button
                       key={edge}
                       type="button"
                       data-edge={edge}
                       aria-label={`Resize meeting ${edge}`}
-                      className={`absolute inset-y-0 w-6 cursor-ew-resize bg-accent/20 ${edge === "start" ? "left-0 -translate-x-full" : "right-0 translate-x-full"}`}
+                      title={`Drag to change the meeting ${edge}`}
+                      className={`cut-edge absolute inset-y-0 w-8 cursor-ew-resize pointer-coarse:w-11 ${edge === "start" ? "left-0 -translate-x-1/2" : "right-0 translate-x-1/2"}`}
                       onKeyDown={(event) => {
-                        if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+                        const sign =
+                          event.key === "ArrowLeft" || event.key === "ArrowDown"
+                            ? -1
+                            : event.key === "ArrowRight" || event.key === "ArrowUp"
+                              ? 1
+                              : 0;
+                        if (!sign) return;
                         event.stopPropagation();
                         event.preventDefault();
-                        const delta =
-                          (event.key === "ArrowLeft" ? -1 : 1) * (event.shiftKey ? 5 : 15);
+                        const delta = sign * (event.shiftKey ? 5 : 15);
                         resizeRange(
                           edge,
                           (edge === "start" ? cutStartMin : cutEndMin) + delta,
@@ -584,29 +721,49 @@ export function Loom({ board, view, now, onCut, onRange, onPlaces, cityChooser }
             </div>
           </div>
         </div>
-      </div>
-      {cutStyle ? null : (
-        <p className="mt-3 text-sm text-mute">
-          The cut sits outside this span. Switch to the full day, or nudge it from the side panel.
-        </p>
-      )}
-      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-mute">
-        <span className="inline-flex items-center gap-2">
-          <span className="swatch work-swatch" aria-hidden />
-          Work hours
-        </span>
-        <span className="inline-flex items-center gap-2">
-          <span className="swatch shared-swatch" aria-hidden />
-          Shared
-        </span>
-        {hoverUtc !== null ? (
-          <span className="text-ink tabular-nums">
-            Pointer ·{" "}
-            {board.places
-              .map((place) => `${place.label} ${formatHm(hoverUtc, place.zone, board.clockFormat)}`)
-              .join(" · ")}
-          </span>
-        ) : null}
+        {cutStyle ? null : (
+          <div className="flex flex-wrap items-center gap-3 border-t border-line px-4 py-3 text-sm">
+            <span className="text-mute">
+              Your selected time ({fmt(view.cutStartUtc, view.axis.zone)}) is outside the work-hours
+              view.
+            </span>
+            <Button variant="quiet" onClick={() => onSpan("day")}>
+              Show full day
+            </Button>
+          </div>
+        )}
+        <div className="flex flex-col gap-2 border-t border-line px-4 py-3 text-xs text-mute">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <span className="inline-flex items-center gap-2">
+              <span className="swatch work-swatch" aria-hidden />
+              Work hours
+            </span>
+            <span className="inline-flex items-center gap-2">
+              <span className="swatch shared-swatch" aria-hidden />
+              Shared
+            </span>
+            <span className="inline-flex items-center gap-2">
+              <span className="swatch selected-swatch" aria-hidden />
+              Selected
+            </span>
+            {nowVisible ? (
+              <span className="inline-flex items-center gap-2">
+                <span className="now-swatch" aria-hidden />
+                Now
+              </span>
+            ) : null}
+            <span className="pointer-coarse:hidden md:ml-auto">
+              Drag across the grid to select a time · Shift for 5-minute steps
+            </span>
+            <span className="hidden pointer-coarse:inline md:ml-auto">
+              Tap a time, then drag the edges to resize
+            </span>
+          </div>
+          <p className="min-w-0 truncate tabular-nums" aria-hidden>
+            <span className="font-medium text-ink">{readout.label}</span> ·{" "}
+            {readout.items.join(" · ")}
+          </p>
+        </div>
       </div>
     </section>
   );
