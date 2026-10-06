@@ -103,6 +103,7 @@ export function BoardApp() {
   const [theme, setTheme] = useState<"light" | "dark" | "system">("system");
   const [copyError, setCopyError] = useState(false);
   const [removed, setRemoved] = useState<{ place: Place; index: number } | null>(null);
+  const [toastHeld, setToastHeld] = useState(false);
   const optionsRef = useRef<HTMLDetailsElement>(null);
   useDetailsDismiss(optionsRef);
   const [systemDark, setSystemDark] = useState(false);
@@ -222,14 +223,22 @@ export function BoardApp() {
   };
 
   useEffect(() => {
-    if (!removed) return;
-    const timer = window.setTimeout(() => setRemoved(null), 6000);
+    if (!copyError) return;
+    const timer = window.setTimeout(() => setCopyError(false), 8000);
     return () => window.clearTimeout(timer);
-  }, [removed]);
+  }, [copyError]);
+
+  // The toast waits while the pointer or focus is on it, so Undo stays reachable (WCAG 2.2.1).
+  useEffect(() => {
+    if (!removed || toastHeld) return;
+    const timer = window.setTimeout(() => setRemoved(null), 10_000);
+    return () => window.clearTimeout(timer);
+  }, [removed, toastHeld]);
 
   const removePlace = (place: Place) => {
     if (board.places.length < 2) return;
     const index = board.places.findIndex((item) => placeIdentity(item) === placeIdentity(place));
+    setToastHeld(false);
     setRemoved({ place, index });
     setPlaces(board.places.filter((item) => placeIdentity(item) !== placeIdentity(place)));
     // The open menu unmounts with its row; hand focus to the row that took its place.
@@ -242,6 +251,7 @@ export function BoardApp() {
   /** Put back only the removed city, at its old position, keeping later edits. */
   const undoRemove = () => {
     if (!removed) return;
+    setToastHeld(false);
     setRemoved(null);
     const { place, index } = removed;
     if (board.places.length >= 8) return;
@@ -250,6 +260,20 @@ export function BoardApp() {
     places.splice(Math.min(Math.max(index, 0), places.length), 0, place);
     setPlaces(places);
   };
+
+  useEffect(() => {
+    if (!removed) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (!(event.ctrlKey || event.metaKey) || event.shiftKey || event.key.toLowerCase() !== "z")
+        return;
+      const target = event.target as HTMLElement | null;
+      if (target?.closest("input, textarea, select, [contenteditable='true']")) return;
+      event.preventDefault();
+      undoRemove();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  });
 
   const restoreGroup = (places: Place[]) => {
     const restored = loadBoard(Date.now(), "", JSON.stringify({ ...board, places }));
@@ -483,6 +507,7 @@ export function BoardApp() {
           <IconButton
             label="Dark theme"
             variant="ghost"
+            className="theme-toggle"
             role="switch"
             aria-checked={darkTheme}
             onClick={toggleTheme}
@@ -586,13 +611,24 @@ export function BoardApp() {
           calendarUrl={googleCalendarUrl(board, view, schedule)}
         />
       </div>
+      <p className="sr-only" role="status" aria-live="polite">
+        {removed ? `${removed.place.label} removed. Press Control or Command Z to undo.` : ""}
+      </p>
       {removed ? (
         <div
-          role="status"
+          onPointerEnter={() => setToastHeld(true)}
+          onPointerLeave={() => setToastHeld(false)}
+          onFocus={() => setToastHeld(true)}
+          onBlur={() => setToastHeld(false)}
           className="menu fixed bottom-4 left-1/2 z-[70] flex max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-3 py-2 pl-4 pr-2 text-sm"
         >
           <span className="truncate">{removed.place.label} removed</span>
-          <Button variant="ghost" className="text-accent" onClick={undoRemove}>
+          <Button
+            variant="ghost"
+            className="text-accent"
+            aria-keyshortcuts="Control+Z Meta+Z"
+            onClick={undoRemove}
+          >
             Undo
           </Button>
         </div>

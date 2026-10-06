@@ -271,6 +271,21 @@ export function Inspector({
                       edge === "start" ? view.cutStartUtc : view.cutEndUtc,
                       view.axis.zone,
                     )}
+                    available={(minute) => {
+                      const day = todayInZone(view.axis.zone, view.cutStartUtc);
+                      const utc = wallInstant(day, minute, view.axis.zone);
+                      return Number.isFinite(utc) && wallMinutes(utc, view.axis.zone) === minute;
+                    }}
+                    note={
+                      edge === "end"
+                        ? (minute) => {
+                            const day = todayInZone(view.axis.zone, view.cutStartUtc);
+                            return wallInstant(day, minute, view.axis.zone) <= view.cutStartUtc
+                              ? "+1 day"
+                              : null;
+                          }
+                        : undefined
+                    }
                     onChange={(minute) => {
                       // Board minutes are elapsed time since the board date's local midnight,
                       // so map the wall-clock choice through the axis zone (DST days differ).

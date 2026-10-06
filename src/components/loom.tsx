@@ -563,6 +563,10 @@ export function Loom({
                         const weekend =
                           board.markWeekends && (local.weekday === 0 || local.weekday === 6);
                         const localDay = dayKey(local.year, local.month, local.day);
+                        // Muted text drops below 4.5:1 under the selection tint, so lift it to ink.
+                        const underCut =
+                          minute + 60 > board.cutMinutes &&
+                          minute < board.cutMinutes + board.durationMin;
                         // Mark each local midnight, and the first column when the city is on another date.
                         const showDay =
                           local.hour === 0 ||
@@ -572,7 +576,11 @@ export function Loom({
                             key={minute}
                             title={`${place.label} · ${dateLabel.format(utc)}, ${fmt(utc, place.zone)}`}
                             className={`hour-cell flex flex-col items-start justify-center gap-1 border-l border-line px-1.5 text-sm tabular-nums first:border-l-0 ${
-                              working ? "cell-work font-medium" : "text-mute"
+                              working
+                                ? "cell-work font-medium"
+                                : underCut
+                                  ? "text-ink"
+                                  : "text-mute"
                             } ${weekend ? "bg-warn/10" : ""}`}
                           >
                             <span>{fmt(utc, place.zone).replace(":00", "")}</span>
