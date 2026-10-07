@@ -46,7 +46,7 @@ export function placeForZone(zone: string): Place | null {
 }
 
 export function placeIdentity(place: Pick<Place, "zone" | "cityId">): string {
-  return place.cityId ? `city:${place.cityId}` : `zone:${place.zone}`;
+  return place.cityId ? `city:${place.cityId}` : `zone:${canonicalZone(place.zone)}`;
 }
 
 function defaultPlaces(): Place[] {
@@ -157,7 +157,8 @@ export function sanitizeBoard(value: unknown, now: number): Board {
   const unique: Place[] = [];
   for (const place of places) {
     const clean: Place = {
-      zone: place.zone,
+      // Older boards and links can hold legacy names (Europe/Kiev); store the current one.
+      zone: canonicalZone(place.zone),
       label: place.label.trim(),
       ...(typeof place.cityId === "string" && /^\d{1,12}$/.test(place.cityId)
         ? { cityId: place.cityId }
