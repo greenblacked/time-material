@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
+import { Suspense, lazy, useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { ChevronLeft, ChevronRight, Moon, SlidersHorizontal, Sun, Trash2 } from "lucide-react";
 import {
@@ -31,6 +31,9 @@ import { Inspector } from "./inspector";
 import { Loom } from "./loom";
 import { Button, IconButton, Segmented } from "./ui";
 import { BoardCalendar } from "./board-calendar";
+
+// WebGPU only, and never on the server: load the shader bundle after mount.
+const HeaderShader = import.meta.env.SSR ? () => null : lazy(() => import("./header-shader"));
 
 function readStorage(key: string): string | null {
   try {
@@ -108,6 +111,38 @@ export function BoardApp() {
   useDetailsDismiss(optionsRef);
   const [systemDark, setSystemDark] = useState(false);
   const darkTheme = theme === "dark" || (theme === "system" && systemDark);
+  // Load the shader only with a real WebGPU adapter, once the page is idle.
+  const [gpuReady, setGpuReady] = useState(false);
+  const [plainHeader, setPlainHeader] = useState(true);
+  useEffect(() => {
+    if (plainHeader || gpuReady) return;
+    let cancelled = false;
+    const gpu = (navigator as { gpu?: { requestAdapter(): Promise<unknown> } }).gpu;
+    const probe = () => {
+      gpu
+        ?.requestAdapter()
+        .then((adapter) => {
+          if (!cancelled) setGpuReady(Boolean(adapter));
+        })
+        .catch(() => {});
+    };
+    const idle = window.requestIdleCallback?.(probe, { timeout: 2000 });
+    const timer = idle === undefined ? window.setTimeout(probe, 200) : undefined;
+    return () => {
+      cancelled = true;
+      if (idle !== undefined) window.cancelIdleCallback(idle);
+      window.clearTimeout(timer);
+    };
+  }, [plainHeader, gpuReady]);
+  // Reduced motion and forced colors keep the still CSS gradient instead.
+  useEffect(() => {
+    const media = window.matchMedia("(prefers-reduced-motion: reduce), (forced-colors: active)");
+    setPlainHeader(media.matches);
+    const changed = (event: MediaQueryListEvent) => setPlainHeader(event.matches);
+    media.addEventListener("change", changed);
+    return () => media.removeEventListener("change", changed);
+  }, []);
+  const shaderReady = gpuReady && !plainHeader;
   useEffect(() => {
     const media = window.matchMedia("(prefers-color-scheme: dark)");
     setSystemDark(media.matches);
@@ -320,7 +355,12 @@ export function BoardApp() {
       <a className="skip" href="#loom">
         Skip to the day
       </a>
-      <header className="flex h-14 items-center gap-3">
+      <header className="header-band flex h-14 items-center gap-3 px-3">
+        {shaderReady ? (
+          <Suspense fallback={null}>
+            <HeaderShader dark={darkTheme} />
+          </Suspense>
+        ) : null}
         <img src="/clock-icon.png" alt="" width="32" height="32" className="size-8 shrink-0" />
         <h1 className="text-lg font-semibold tracking-tight">Time Material</h1>
         <p className="hidden truncate text-sm text-mute sm:block">
