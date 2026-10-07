@@ -430,6 +430,31 @@
     transform: none;
   }
 
+  /* Header band: a WebGPU mesh gradient, with this CSS gradient where WebGPU is missing. */
+  .header-band {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-lg);
+    background: linear-gradient(
+      110deg,
+      var(--color-surface),
+      color-mix(in oklab, var(--color-accent) 10%, var(--color-surface))
+    );
+  }
+
+  .header-band > :not(.header-shader) {
+    position: relative;
+  }
+
+  .header-shader {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+  }
+
   /* Timeline */
   .cell-work {
     background: var(--band-work);
