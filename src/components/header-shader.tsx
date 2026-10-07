@@ -15,10 +15,10 @@ const DARK_STOPS = [
 ];
 
 /**
- * WebGPU mesh gradient behind the app header. Browsers without WebGPU keep the
- * transparent canvas, so the CSS gradient on `.header-band` shows instead.
+ * WebGPU mesh gradient behind the app header. It mounts only with a WebGPU adapter and
+ * motion allowed; otherwise, or if the device is lost, the CSS gradient on `.header-band` shows.
  */
-export default function HeaderShader({ dark, still }: { dark: boolean; still: boolean }) {
+export default function HeaderShader({ dark }: { dark: boolean }) {
   return (
     <Shader className="header-shader" disableTelemetry aria-hidden="true">
       <MeshGradient
@@ -28,7 +28,7 @@ export default function HeaderShader({ dark, still }: { dark: boolean; still: bo
         smoothness={3}
         drift={0.45}
         swirl={0.15}
-        speed={still ? 0 : 0.2}
+        speed={0.2}
       />
       <SimplexNoise scale={3} speed={0} opacity={0.06} blendMode="softLight" />
     </Shader>
