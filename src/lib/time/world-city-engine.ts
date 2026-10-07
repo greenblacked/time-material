@@ -1,4 +1,5 @@
 import { labelFromZone, searchableCities } from "./cities.ts";
+import { canonicalZone } from "./zoned.ts";
 import { cityBucket, matchingCityRows, normalizeCity } from "./world-city-search.ts";
 import type { CityPage, CityRow, CitySearchRequest, WorldCity } from "./world-cities.ts";
 type Manifest = {
@@ -60,9 +61,12 @@ function matches(query: string): Promise<Matches> {
         ? matchingCityRows(await shard(cityBucket(key, directory.buckets)), key)
         : [];
     const zones = new Map(searchableCities().map((city) => [city.zone, city]));
-    for (const zone of directory.zones)
+    for (const listed of directory.zones) {
+      // The catalog keeps legacy links such as Europe/Kiev; list each zone once, by its current name.
+      const zone = canonicalZone(listed);
       if (!zones.has(zone))
         zones.set(zone, { zone, label: labelFromZone(zone), region: "Timezone" });
+    }
     return {
       directory,
       rows,
