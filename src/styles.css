@@ -430,6 +430,37 @@
     transform: none;
   }
 
+  /* Header band: a WebGPU mesh gradient, with this CSS gradient where WebGPU is missing. */
+  .header-band {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-lg);
+    background: linear-gradient(
+      110deg,
+      var(--color-surface),
+      color-mix(in oklab, var(--color-accent) 10%, var(--color-surface))
+    );
+  }
+
+  .header-band > :not(.header-shader) {
+    position: relative;
+  }
+
+  .header-shader {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+  }
+
+  @media (forced-colors: active) {
+    .header-shader {
+      display: none;
+    }
+  }
+
   /* Timeline */
   .cell-work {
     background: var(--band-work);
@@ -598,6 +629,7 @@
   .safe-x {
     padding-left: max(1rem, env(safe-area-inset-left));
     padding-right: max(1rem, env(safe-area-inset-right));
+    padding-top: max(0.75rem, env(safe-area-inset-top));
     padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
   }
 
