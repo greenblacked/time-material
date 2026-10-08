@@ -226,9 +226,10 @@ export function Inspector({
               className="size-4 text-mute transition-transform group-open:rotate-180"
             />
           </summary>
-          <div className="mt-3 grid gap-4 sm:grid-cols-[max-content_1fr] sm:items-center sm:gap-x-6">
-            <span className="field-label">Duration</span>
-            <div className="flex flex-wrap items-center gap-2">
+          {/* Row labels line up with the first control row; every control is --control-h tall. */}
+          <div className="mt-3 grid gap-4 sm:grid-cols-[max-content_1fr] sm:items-start sm:gap-x-6">
+            <span className="field-label sm:min-h-(--control-h) sm:content-center">Duration</span>
+            <div className="flex flex-col items-start gap-2">
               <Segmented
                 label="Meeting length"
                 options={DURATIONS}
@@ -239,7 +240,7 @@ export function Inspector({
                 }}
               />
               <label className="inline-flex items-center gap-2 text-sm text-mute">
-                Custom
+                <span className="w-14">Custom</span>
                 <input
                   type="number"
                   aria-label="Duration in minutes"
@@ -257,13 +258,17 @@ export function Inspector({
                 min
               </label>
             </div>
-            <span className="field-label">Time ({view.axis.label})</span>
-            <div className="flex flex-wrap items-center gap-2">
+            <span className="field-label sm:min-h-(--control-h) sm:content-center">
+              Time ({view.axis.label})
+            </span>
+            {/* One shared column keeps Start and End the same width; End's "+1 day" options are wider. */}
+            <div className="grid grid-cols-[max-content_max-content] items-center gap-2 text-sm text-mute">
               {(["start", "end"] as const).map((edge) => (
-                <label key={edge} className="inline-flex items-center gap-2 text-sm text-mute">
-                  <span className="w-9">{edge === "start" ? "Start" : "End"}</span>
+                <label key={edge} className="contents">
+                  <span className="w-14">{edge === "start" ? "Start" : "End"}</span>
                   <TimeSelect
                     label={`Meeting ${edge} time`}
+                    className="w-full"
                     format={board.clockFormat}
                     zone={view.axis.zone}
                     step={15}
