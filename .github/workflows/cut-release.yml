@@ -1,0 +1,34 @@
+name: Cut release
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version X.Y.Z already prepared on main
+        required: true
+        type: string
+permissions: {}
+concurrency:
+  group: cut-release
+  cancel-in-progress: false
+jobs:
+  cut:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      actions: write
+    steps:
+      - name: Require main dispatch
+        run: test "$GITHUB_REF" = refs/heads/main
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22
+      - name: Validate, create annotated tag and dispatch release
+        env:
+          VERSION: ${{ inputs.version }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/release/cut.mjs
