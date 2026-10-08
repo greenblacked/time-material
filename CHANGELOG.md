@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Meeting details: Start and End time pickers share one width, and row labels align with their first control.
+
 ## [0.2.0]
 
 ### Added
