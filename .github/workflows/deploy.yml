@@ -1,8 +1,9 @@
 name: Deploy Cloudflare
 
 on:
+  # main publishes the named stage preview; production publishes only from v* release tags.
   push:
-    branches: [stage]
+    branches: [main]
   workflow_call:
     secrets:
       CLOUDFLARE_API_TOKEN:
@@ -37,7 +38,7 @@ jobs:
           REF_NAME: ${{ github.ref_name }}
         run: |
           case "$EVENT:$REF_TYPE:$REF_NAME" in
-            push:branch:stage) echo "environment=staging" >> "$GITHUB_OUTPUT" ;;
+            push:branch:main) echo "environment=staging" >> "$GITHUB_OUTPUT" ;;
             push:tag:v*|workflow_dispatch:tag:v*) echo "environment=production" >> "$GITHUB_OUTPUT" ;;
             *) echo 'Unauthorized deployment context'; exit 1 ;;
           esac

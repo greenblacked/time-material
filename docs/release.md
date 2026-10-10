@@ -28,9 +28,10 @@ tag without Cloudflare credentials; publication rechecks CI and published releas
 before exposing Cloudflare credentials in the publication step. There is no
 production deployment on an ordinary main push.
 
-Stage pushes continue to publish the named stage preview of the same Worker.
-They wait up to ten minutes for exact-SHA stage CI and `CI`; failure or a moved
-stage branch prevents publication. A successful stage upload does not prove app
+Pushes to `main` publish the named stage preview of the same Worker; production
+publishes only from a `v*` release tag. Stage publication waits up to ten minutes
+for exact-SHA `main` CI and `CI`; failure or a moved `main` prevents publication.
+A successful stage upload does not prove app
 behavior behind Cloudflare Access. Production publishes without a pre-publication
 health check, so the first deployment needs no bootstrap. After publication it
 reports whether the exact deployed Worker version is served; that check never
@@ -40,7 +41,7 @@ See `cloudflare-deployment.md` for the smoke limitations.
 
 Configure `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` for the production and
 staging environments. Production environment branch/tag policy must admit release
-`v*` tags; staging must admit stage. Keep required reviewers and repository rules
+`v*` tags; staging must admit main. Keep required reviewers and repository rules
 active. The cut job needs contents/actions write for tagging and dispatch, the
 release job needs contents write and actions read, and deployment needs only
 contents/actions read. No credential or real database mount belongs in builds.

@@ -88,7 +88,7 @@ export async function guard(mode) {
     event = process.env.GITHUB_EVENT_NAME;
   const sha = git("rev-parse", "HEAD");
   if (!["push", "workflow_dispatch"].includes(event)) throw Error("Unauthorized event");
-  const branch = mode === "stage" ? "stage" : "main";
+  const branch = "main";
   git("fetch", "--force", "origin", `refs/heads/${branch}:refs/remotes/origin/${branch}`, "--tags");
   let value;
   if (mode === "cut") {
@@ -109,8 +109,8 @@ export async function guard(mode) {
     if (git("rev-parse", `${ref}^{commit}`) !== sha) throw Error("Tag changed since checkout");
     git("merge-base", "--is-ancestor", sha, "origin/main");
   } else if (mode === "stage") {
-    if (event !== "push" || ref !== "refs/heads/stage" || sha !== git("rev-parse", "origin/stage"))
-      throw Error("Stage requires latest stage push");
+    if (event !== "push" || ref !== "refs/heads/main" || sha !== git("rev-parse", "origin/main"))
+      throw Error("Stage preview requires latest main push");
   } else throw Error("Unknown guard mode");
   if (value) {
     if (JSON.parse(readFileSync("package.json", "utf8")).version !== value)
