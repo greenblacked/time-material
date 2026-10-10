@@ -39,7 +39,7 @@ Browser checks use Playwright with Chromium and WebKit across desktop, phone, an
 
 ## Delivery
 
-Work follows `dev` → `stage` → `main`. The required check is `CI`. Stage deploys a named preview of the same Cloudflare Worker. Production deploys from a published tagged release.
+Work follows `dev` → `stage` → `main`. The required check is `CI`. A push to `main` deploys the stage preview of the same Cloudflare Worker. Production deploys only from a `v*` release tag.
 
 Dependency checks run npm audit and OSV-Scanner against the lockfile. High or critical npm advisories, any OSV finding, and scanner errors fail the required security job. Dependabot proposes weekly package and workflow updates to `dev`, with a seven-day cooldown for new versions; updates require review.
 
