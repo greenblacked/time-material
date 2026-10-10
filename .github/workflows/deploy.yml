@@ -41,7 +41,7 @@ jobs:
             push:tag:v*|workflow_dispatch:tag:v*) echo "environment=production" >> "$GITHUB_OUTPUT" ;;
             *) echo 'Unauthorized deployment context'; exit 1 ;;
           esac
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
           fetch-depth: 0
@@ -80,7 +80,7 @@ jobs:
       name: ${{ needs.build.outputs.environment }}
       url: ${{ needs.build.outputs.environment == 'production' && 'https://time.szolotov.com' || 'https://stage.time.szolotov.com' }}
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
           fetch-depth: 0
