@@ -31,13 +31,12 @@ production deployment on an ordinary main push.
 Stage pushes continue to publish the named stage preview of the same Worker.
 They wait up to ten minutes for exact-SHA stage CI and `CI`; failure or a moved
 stage branch prevents publication. A successful stage upload does not prove app
-behavior behind Cloudflare Access. Production verifies the exact deployed Worker
-version, captures and verifies the healthy production version before publication,
-and explicitly restores that captured version only when the failed version is
-still live. The restored version must pass the exact-version app smoke. Production
-must already serve a healthy Worker; the initial deployment requires separate
-bootstrap before automated releases.
-See `cloudflare-deployment.md` for the existing smoke and rollback limitations.
+behavior behind Cloudflare Access. Production publishes without a pre-publication
+health check, so the first deployment needs no bootstrap. After publication it
+reports whether the exact deployed Worker version is served; that check never
+fails or undoes the release, and there is no automatic rollback. Roll back by
+hand with `npx wrangler rollback <version-id> --name time-material`.
+See `cloudflare-deployment.md` for the smoke limitations.
 
 Configure `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` for the production and
 staging environments. Production environment branch/tag policy must admit release
