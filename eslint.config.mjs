@@ -30,10 +30,12 @@ export default tseslint.config(
       "react-refresh": reactRefresh,
     },
     rules: {
-      ...reactHooks.configs.recommended.rules,
+      // The two hook rules v5 enforced; the React Compiler rules added to v7's preset need their own refactor.
+      "react-hooks/rules-of-hooks": "error",
+      "react-hooks/exhaustive-deps": "warn",
       "react-refresh/only-export-components": [
         "warn",
-        { allowConstantExport: true },
+        { allowConstantExport: true, extraHOCs: ["createFileRoute"] },
       ],
       "@typescript-eslint/no-unused-vars": [
         "warn",
