@@ -26,6 +26,6 @@ node scripts/ci/worker-smoke.mjs
 
 ## Publication
 
-A push to `stage` publishes its named preview after the exact commit passes `CI`. Production publication follows a successful `main` check and a published versioned release. See [release workflow](release.md).
+A push to `main` publishes the named `stage` preview after the exact commit passes `CI`. Production publishes only from a `v*` release tag cut on `main`. See [release workflow](release.md).
 
 Deployment checks the deployed version, page, assets, manifest, and indexing headers. Production publishes without a pre-publication health check; the post-publication version check only reports, and rollback is manual (`npx wrangler rollback <version-id> --name time-material`).

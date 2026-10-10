@@ -6,7 +6,7 @@ Three long-lived branches. Work never lands on production directly.
 | ------- | ------------------------------------------------------------- |
 | `dev`   | Integration. Continuous integration only.                     |
 | `stage` | Release candidate. Continuous integration, then a human gate. |
-| `main`  | Production. The same gates as stage.                          |
+| `main`  | Deploys the stage preview. Production deploys from `v*` tags. |
 
 ```text
 work ──▶ dev ── pull request (merge commit) ──▶ stage ── pull request (merge commit) ──▶ main
@@ -58,8 +58,8 @@ Into `stage` and into `main`, every time:
 Do not force-push a branch that has already been pushed. An unpushed commit may be reworded.
 
 Cloudflare Workers deployment is configured in `.github/workflows/deploy.yml`.
-A published release from `main` publishes production at `https://time.szolotov.com`; `stage` publishes
-the named `stage` preview of the same Worker at `https://stage.time.szolotov.com`.
+A `v*` release tag cut on `main` publishes production at `https://time.szolotov.com`; every push to `main`
+publishes the named `stage` preview of the same Worker at `https://stage.time.szolotov.com`.
 See `docs/cloudflare-deployment.md` for credentials, local checks and rollback.
 Cloudflare Zero Trust protection is managed separately for the stage hostname.
 Local validation does not establish that either environment has been published.
