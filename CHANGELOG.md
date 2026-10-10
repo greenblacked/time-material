@@ -2,9 +2,17 @@
 
 ## [Unreleased]
 
+## [0.2.1]
+
+### Changed
+
+- Production releases publish without first requiring a healthy production response, so the first deployment needs no separate bootstrap. The post-publication version check reports only, and there is no automatic rollback.
+- Browser tests run in the pinned Playwright image on Ubuntu 24.04.
+
 ### Fixed
 
 - Meeting details: Start and End time pickers share one width, and row labels align with their first control.
+- Production re-runs no longer fail on an expired build artifact; it is kept for 7 days.
 
 ## [0.2.0]
 
