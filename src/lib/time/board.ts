@@ -288,7 +288,7 @@ export function loadBoard(now: number, search: string, stored: string | null): B
     }
   }
   const board = defaultBoard(now);
-  let detected = "UTC";
+  let detected: string;
   try {
     detected = Intl.DateTimeFormat().resolvedOptions().timeZone;
   } catch {
