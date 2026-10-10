@@ -16,5 +16,6 @@ try {
 } catch (error) {
   throw Error(
     `Tag ${tag} exists. Recover by dispatching release.yml on ${tag}; do not cut again. ${error.message}`,
+    { cause: error },
   );
 }
