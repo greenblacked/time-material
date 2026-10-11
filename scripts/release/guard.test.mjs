@@ -1,12 +1,27 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { version, compare, notes, selectCI, checkJobs, checkHead } from "./guard.mjs";
+import {
+  version,
+  compare,
+  notes,
+  selectCI,
+  checkJobs,
+  checkHead,
+  requireNewest,
+} from "./guard.mjs";
 test("strict versions reject injected refs, leading zeroes and prereleases", () => {
   for (const value of ["01.2.3", "v1.2.3", "1.2.3-rc1", "1.2.3\n", "1.2.3/evil", "1.2"])
     assert.throws(() => version(value));
   assert.equal(compare("1.10.0", "1.9.99"), 1);
   assert.equal(compare("1.0.0", "1.0.0"), 0);
   assert.equal(compare("0.1.0", "1.0.0"), -1);
+});
+test("releases must be newer than every other release tag", () => {
+  const tags = ["v0.1.0", "v0.2.1", "v0.2.0", "not-a-release", ""];
+  assert.doesNotThrow(() => requireNewest("0.2.2", tags));
+  assert.throws(() => requireNewest("0.2.1", tags));
+  assert.throws(() => requireNewest("0.2.0", tags, "v0.2.0"));
+  assert.doesNotThrow(() => requireNewest("0.2.2", [...tags, "v0.2.2"], "v0.2.2"));
 });
 test("release notes require exact nonempty version section", () => {
   assert.equal(

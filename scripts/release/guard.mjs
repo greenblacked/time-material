@@ -42,6 +42,13 @@ export function selectCI(runs, sha, branch, repository) {
     throw Error("Latest exact-SHA branch push CI must succeed");
   return run;
 }
+export function requireNewest(value, tags, own) {
+  const releases = tags.filter(
+    (tag) => tag !== own && /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(tag),
+  );
+  if (releases.some((tag) => compare(value, tag.slice(1)) <= 0))
+    throw Error("Version must exceed every existing release tag");
+}
 export function checkJobs(jobs) {
   const gate = jobs.filter((job) => job.name === "CI").sort((a, b) => b.id - a.id)[0];
   if (!gate || gate.status !== "completed" || gate.conclusion !== "success")
@@ -97,17 +104,14 @@ export async function guard(mode) {
     if (sha !== git("rev-parse", "origin/main")) throw Error("Cut requires latest main HEAD");
     value = process.env.VERSION;
     version(value);
-    const tags = git("tag", "--list", "v*")
-      .split("\n")
-      .filter((tag) => /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(tag));
-    if (tags.some((tag) => compare(value, tag.slice(1)) <= 0))
-      throw Error("Version must exceed every existing release tag");
+    requireNewest(value, git("tag", "--list", "v*").split("\n"));
   } else if (mode === "release") {
     if (!ref?.startsWith("refs/tags/v")) throw Error("Release requires a tag");
     value = ref.slice("refs/tags/v".length);
     version(value);
     if (git("rev-parse", `${ref}^{commit}`) !== sha) throw Error("Tag changed since checkout");
     git("merge-base", "--is-ancestor", sha, "origin/main");
+    requireNewest(value, git("tag", "--list", "v*").split("\n"), `v${value}`);
   } else if (mode === "stage") {
     if (event !== "push" || ref !== "refs/heads/main" || sha !== git("rev-parse", "origin/main"))
       throw Error("Stage preview requires latest main push");

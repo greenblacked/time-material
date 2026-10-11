@@ -83,6 +83,18 @@ test("calendar exports preserve exact UTC range including DST and five minute me
   assert.match(meetingIcs(board, view, null), /DTSTART:20261101T060500Z\r\nDTEND:20261101T061000Z/);
   assert.match(params.get("details")!, /Calendar was not applied/);
 });
+test("calendar export neutralizes carriage returns and folds long lines", () => {
+  const place = placeForZone("Europe/Kyiv")!;
+  const label = `Kyiv\rX-INJECTED:1\r\nATTENDEE:evil ${"Ж".repeat(60)}`;
+  const board = { ...defaultBoard(now), places: [{ ...place, label }] };
+  const ics = meetingIcs(board, derive(board, null), null);
+  assert.doesNotMatch(ics, /\r(?!\n)/);
+  const physical = ics.split("\r\n");
+  for (const line of physical) assert.ok(new TextEncoder().encode(line).length <= 75, line);
+  assert.ok(!physical.some((line) => /^(X-INJECTED|ATTENDEE)/.test(line)));
+  const unfolded = ics.replace(/\r\n /g, "");
+  assert.match(unfolded, /DESCRIPTION:.*Kyiv\\nX-INJECTED:1\\nATTENDEE:evil Ж{60}/);
+});
 
 test("resize fixes the other edge and stops at five minutes on crossing", () => {
   assert.deepEqual(resizeSelection("end", 1041, 965, 60, 1440), {
