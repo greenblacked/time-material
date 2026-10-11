@@ -30,10 +30,9 @@ interface TimePwaEvent {
   req: { method: string; headers: Headers };
 }
 
+/** The URL host is set by the platform; a client-supplied X-Forwarded-Host is not trusted. */
 function requestHost(event: TimePwaEvent): string {
-  return (
-    event.req.headers.get("x-forwarded-host") ?? event.req.headers.get("host") ?? event.url.host
-  );
+  return event.url.host;
 }
 
 function injectHeadStreaming(response: Response, host: string): Response {
