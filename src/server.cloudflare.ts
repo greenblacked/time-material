@@ -1,5 +1,12 @@
 import timePwaMiddleware from "../server/middleware/time-pwa";
 
+/** Defence-in-depth headers that do not restrict the app's own scripts or styles. */
+const securityHeaders: Record<string, string> = {
+  "Content-Security-Policy": "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+  "X-Content-Type-Options": "nosniff",
+  "Referrer-Policy": "strict-origin-when-cross-origin",
+};
+
 /** Native Worker entry; keep the deployed PWA middleware without a Nitro runtime. */
 export default {
   async fetch(
@@ -14,6 +21,7 @@ export default {
       return new Response(noindex ? "User-agent: *\nDisallow: /\n" : "User-agent: *\nAllow: /\n", {
         headers: {
           "content-type": "text/plain; charset=utf-8",
+          ...securityHeaders,
           ...metadataHeaders,
           ...(noindex ? { "X-Robots-Tag": "noindex, nofollow" } : {}),
         },
@@ -28,6 +36,7 @@ export default {
     );
     const response = result as Response;
     const headers = new Headers(response.headers);
+    for (const [name, value] of Object.entries(securityHeaders)) headers.set(name, value);
     if (noindex) headers.set("X-Robots-Tag", "noindex, nofollow");
     if (env.CF_VERSION_METADATA?.id) headers.set("X-Worker-Version", env.CF_VERSION_METADATA.id);
     return new Response(response.body, {

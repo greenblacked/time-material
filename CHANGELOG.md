@@ -2,6 +2,23 @@
 
 ## [Unreleased]
 
+## [0.2.2]
+
+### Security
+
+- Responses carry `Content-Security-Policy` (`frame-ancestors 'none'; object-src 'none'; base-uri 'self'`), `X-Content-Type-Options: nosniff` and `Referrer-Policy: strict-origin-when-cross-origin`.
+- Manifest, install page and share-preview tags use the request URL host instead of a client-supplied `X-Forwarded-Host`.
+- Calendar exports strip carriage returns from shared-link labels and fold long lines per RFC 5545.
+- The Release workflow refuses a tag that is not newer than every other release tag, matching Cut release.
+
+### Changed
+
+- Dependencies and GitHub Actions updated.
+
+### Removed
+
+- Unused peer-to-peer multiplayer module.
+
 ## [0.2.1]
 
 ### Changed
