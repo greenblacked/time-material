@@ -258,9 +258,30 @@ export function meetingBrief(
 function icsEscape(value: string): string {
   return value
     .replace(/\\/g, "\\\\")
+    .replace(/\r\n?/g, "\n")
     .replace(/\n/g, "\\n")
     .replace(/,/g, "\\,")
     .replace(/;/g, "\\;");
+}
+
+/** RFC 5545 §3.1: fold content lines longer than 75 octets without splitting a character. */
+function icsFold(line: string): string {
+  const encoder = new TextEncoder();
+  const parts: string[] = [];
+  let current = "";
+  let size = 0;
+  for (const char of line) {
+    const bytes = encoder.encode(char).length;
+    if (size + bytes > (parts.length ? 74 : 75)) {
+      parts.push(current);
+      current = "";
+      size = 0;
+    }
+    current += char;
+    size += bytes;
+  }
+  parts.push(current);
+  return parts.join("\r\n ");
 }
 
 function icsStamp(utcMs: number): string {
@@ -285,7 +306,7 @@ export function meetingIcs(board: Board, view: Derived, schedule: ScheduleRespon
     `DTSTART:${icsStamp(view.cutStartUtc)}`,
     `DTEND:${icsStamp(view.cutEndUtc)}`,
     "SUMMARY:Meeting",
-    `DESCRIPTION:${icsEscape(brief)}`,
+    icsFold(`DESCRIPTION:${icsEscape(brief)}`),
     "END:VEVENT",
     "END:VCALENDAR",
     "",
