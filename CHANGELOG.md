@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+## [0.2.3]
+
+### Changed
+
+- Updated dependencies and GitHub Actions, including Vite 8.3.4.
+
+### Security
+
+- Updated undici to patched version 7.30.1.
+
 ## [0.2.2]
 
 ### Security
