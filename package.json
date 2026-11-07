@@ -5,7 +5,9 @@
   "sideEffects": false,
   "type": "module",
   "overrides": {
+    "minimatch": "11.0.1",
     "nf3": "0.3.17",
+    "seroval": "1.6.11",
     "sharp": "0.35.5",
     "undici": "7.30.1"
   },
