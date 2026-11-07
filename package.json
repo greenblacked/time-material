@@ -5,7 +5,9 @@
   "sideEffects": false,
   "type": "module",
   "overrides": {
+    "minimatch": "11.0.1",
     "nf3": "0.3.17",
+    "seroval": "1.6.11",
     "sharp": "0.35.5",
     "undici": "7.30.1"
   },
@@ -90,7 +92,7 @@
     "@types/react-dom": "^19.2.0",
     "eslint": "^10.12.0",
     "eslint-config-prettier": "^10.1.1",
-    "eslint-plugin-prettier": "^5.2.6",
+    "eslint-plugin-prettier": "^5.5.7",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.7",
     "globals": "^17.13.0",
